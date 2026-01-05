@@ -23,35 +23,41 @@ function App() {
                     </div>
                     <button
                         onClick={() => setIsPremium(!isPremium)}
-                        className={`flex items-center gap-1 text-xs px-3 py-1 rounded-full border transition-all ${isPremium
+                        className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-all ${isPremium
                             ? 'bg-amber-500/10 border-amber-500/50 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
                             : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
                             }`}
                     >
                         <Crown size={12} fill={isPremium ? "currentColor" : "none"} />
-                        {isPremium ? 'PREMIUM USER' : 'BASIC USER'}
+                        {isPremium ? '프리미엄 회원' : '일반 회원'}
                     </button>
                 </div>
 
                 {/* Top Tabs */}
-                <nav className="flex gap-2">
+                <nav className="flex gap-3 p-1 bg-slate-900/50 rounded-xl">
                     <button
                         onClick={() => setActiveTab('my-points')}
-                        className={`flex-1 pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'my-points' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-300'
+                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'my-points'
+                            ? 'bg-accent text-slate-900 shadow-[0_0_15px_rgba(56,189,248,0.4)]'
+                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
                             }`}
                     >
                         내 포인트
                     </button>
                     <button
                         onClick={() => setActiveTab('register')}
-                        className={`flex-1 pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'register' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-300'
+                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'register'
+                            ? 'bg-accent text-slate-900 shadow-[0_0_15px_rgba(56,189,248,0.4)]'
+                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
                             }`}
                     >
                         포인트 등록
                     </button>
                     <button
                         onClick={() => setActiveTab('search')}
-                        className={`flex-1 pb-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'search' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-300'
+                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'search'
+                            ? 'bg-accent text-slate-900 shadow-[0_0_15px_rgba(56,189,248,0.4)]'
+                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
                             }`}
                     >
                         검색

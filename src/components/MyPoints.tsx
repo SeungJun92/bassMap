@@ -3,8 +3,8 @@ import { MapPin } from 'lucide-react';
 export default function MyPoints() {
     // Mock data
     const points = [
-        { id: 1, name: 'Best Bass Spot', address: '123 Lake Rd, Chungju', date: '2023-10-01' },
-        { id: 2, name: 'Secret Cove', address: '456 River Side, Gapyeong', date: '2023-10-05' },
+        { id: 1, name: '충주호 인생 포인트', address: '충청북도 충주시 동량면 지동리', date: '2023-10-01' },
+        { id: 2, name: '가평 비밀의 계곡', address: '경기도 가평군 청평면 대성리', date: '2023-10-05' },
     ];
 
     return (

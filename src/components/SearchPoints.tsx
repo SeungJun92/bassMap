@@ -4,21 +4,21 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
     // Mock Data simulating RAWRIS + AI Analysis
     const reservoirs = [
         {
-            id: 1, name: 'Chungju Lake', location: 'Chungju-si',
-            weather: 'Cloudy', wind: '2m/s', waterLevel: '72%',
-            aiScore: 92, aiColor: 'text-green-400', aiLabel: 'Excellent',
+            id: 1, name: '충주호', location: '충청북도 충주시',
+            weather: '흐림', wind: '2m/s', waterLevel: '72%',
+            aiScore: 92, aiColor: 'text-green-400', aiLabel: '매우 좋음',
             liveUsers: 12
         },
         {
-            id: 2, name: 'Andong Lake', location: 'Andong-si',
-            weather: 'Rain', wind: '5m/s', waterLevel: '65%',
-            aiScore: 45, aiColor: 'text-red-400', aiLabel: 'Poor',
+            id: 2, name: '안동호', location: '경상북도 안동시',
+            weather: '비', wind: '5m/s', waterLevel: '65%',
+            aiScore: 45, aiColor: 'text-red-400', aiLabel: '나쁨',
             liveUsers: 3
         },
         {
-            id: 3, name: 'Daecheong Lake', location: 'Daejeon',
-            weather: 'Clear', wind: '1m/s', waterLevel: '80%',
-            aiScore: 85, aiColor: 'text-green-400', aiLabel: 'Good',
+            id: 3, name: '대청호', location: '대전광역시/충북',
+            weather: '맑음', wind: '1m/s', waterLevel: '80%',
+            aiScore: 85, aiColor: 'text-green-400', aiLabel: '좋음',
             liveUsers: 8
         }
     ];
