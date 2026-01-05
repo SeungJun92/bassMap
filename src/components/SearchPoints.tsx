@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Search, Wind, Droplets, Users, MapPin, Navigation } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { Search, Navigation } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -146,8 +146,8 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
 
                             {isPremium ? (
                                 <div className={`text-xs font-bold p-2 text-center rounded border ${res.aiScore >= 80 ? 'bg-green-500/10 border-green-500/30 text-green-400' :
-                                        res.aiScore >= 50 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
-                                            'bg-red-500/10 border-red-500/30 text-red-400'
+                                    res.aiScore >= 50 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
+                                        'bg-red-500/10 border-red-500/30 text-red-400'
                                     }`}>
                                     AI 분석: {res.aiLabel} (출조 추천!)
                                 </div>
