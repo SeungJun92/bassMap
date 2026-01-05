@@ -1,98 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
+  /* Updated Palette: Lighter, Sophisticated "Marine" Blue Theme */
   --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-card: rgba(30, 41, 59, 0.7);
+  /* Slate 900 */
+  --bg-secondary: #334155;
+  /* Slate 700 */
   --accent: #38bdf8;
-  --accent-glow: rgba(56, 189, 248, 0.3);
+  /* Sky 400 */
   --premium-gold: #fbbf24;
-  --premium-glow: rgba(251, 191, 36, 0.3);
+  /* Amber 400 */
   --text-primary: #f1f5f9;
+  /* Slate 100 */
   --text-secondary: #94a3b8;
-  --danger: #ef4444;
-  --success: #22c55e;
-  
-  --font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Slate 400 */
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: flex-start;
-  min-width: 320px;
-  min-height: 100vh;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-family);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-#root {
-  width: 100%;
-  max-width: 600px; /* Mobile app feel */
-  margin: 0 auto;
+  margin: 0;
+  min-width: 320px;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-/* Utilities */
-.glass-panel {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 1rem;
+/* Leaflet Map Fix for Mobile */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background-color: #1e293b;
+  z-index: 10;
 }
 
-.btn {
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
+@layer components {
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent), #0284c7);
-  color: white;
-  box-shadow: 0 4px 15px var(--accent-glow);
-}
+  /* Lighter Glass Panel */
+  .glass-panel {
+    @apply bg-slate-800/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-lg;
+  }
 
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.premium-badge {
-  background: linear-gradient(135deg, var(--premium-gold), #d97706);
-  color: #0f172a;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  font-size: 0.75rem;
-  font-weight: 800;
-  box-shadow: 0 0 10px var(--premium-glow);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  .btn {
+    @apply px-4 py-2 rounded-xl font-bold transition-all active:scale-95;
+  }
 }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.4s ease-out forwards;
 }
