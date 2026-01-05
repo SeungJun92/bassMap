@@ -1,5 +1,4 @@
-import React from 'react';
-import { Search, Wind, Droplets, Thermometer, Users, Star, BarChart3 } from 'lucide-react';
+import { Search, Wind, Droplets, Users, Star, BarChart3 } from 'lucide-react';
 
 export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
     // Mock Data simulating RAWRIS + AI Analysis

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Map, PlusCircle, Search, Anchor, Crown } from 'lucide-react';
+import { useState } from 'react';
+import { Anchor, Crown } from 'lucide-react';
 import MyPoints from './components/MyPoints';
 import RegisterPoint from './components/RegisterPoint';
 import SearchPoints from './components/SearchPoints';
@@ -24,8 +24,8 @@ function App() {
                     <button
                         onClick={() => setIsPremium(!isPremium)}
                         className={`flex items-center gap-1 text-xs px-3 py-1 rounded-full border transition-all ${isPremium
-                                ? 'bg-amber-500/10 border-amber-500/50 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
                             }`}
                     >
                         <Crown size={12} fill={isPremium ? "currentColor" : "none"} />

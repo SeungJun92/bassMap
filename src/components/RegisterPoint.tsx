@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Camera, Star } from 'lucide-react';
+import { MapPin, Star } from 'lucide-react';
 
 export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
     const [formData, setFormData] = useState({
