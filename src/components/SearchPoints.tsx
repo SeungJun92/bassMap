@@ -24,13 +24,13 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
     ];
 
     return (
-        <div className="p-4 animate-fade-in pb-24">
+        <div className="p-4 animate-fade-in pb-24 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">저수지 및 지역 검색</h2>
-                <span className="text-xs text-slate-500">Data: RAWRIS</span>
+                <span className="text-xs text-slate-500">데이터: RAWRIS</span>
             </div>
 
-            <div className="glass-panel flex items-center gap-2 mb-6">
+            <div className="glass-panel flex items-center gap-2 mb-4">
                 <Search className="text-slate-400" />
                 <input
                     type="text"
@@ -39,13 +39,29 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
                 />
             </div>
 
-            <div className="flex flex-col gap-4">
+            {/* Map Placeholder */}
+            <div className="w-full h-48 bg-slate-800 rounded-xl mb-6 relative overflow-hidden group border border-slate-700">
+                {/* Decorative Map Pattern */}
+                <div className="absolute inset-0 opacity-30 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-slate-900/80 px-4 py-2 rounded-full border border-slate-600 flex items-center gap-2 backdrop-blur-sm">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-sm text-slate-300">지도 모드 활성화</span>
+                    </div>
+                </div>
+                {/* Mock Pins */}
+                <div className="absolute top-1/4 left-1/4 text-accent"><Star size={16} fill="currentColor" /></div>
+                <div className="absolute top-1/2 right-1/3 text-red-400"><Star size={16} fill="currentColor" /></div>
+                <div className="absolute bottom-1/3 left-1/2 text-green-400"><Star size={16} fill="currentColor" /></div>
+            </div>
+
+            <div className="flex flex-col gap-4 overflow-y-auto">
                 {reservoirs.map((res) => (
                     <div key={res.id} className="glass-panel flex flex-col gap-3 group relative overflow-hidden">
                         {/* Premium Live User Indicator */}
                         {isPremium && res.liveUsers > 0 && (
                             <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-sky-400 bg-sky-900/30 px-2 py-1 rounded-full animate-pulse">
-                                <Users size={12} /> {res.liveUsers} Live
+                                <Users size={12} /> {res.liveUsers}명 활동중
                             </div>
                         )}
 
@@ -76,15 +92,15 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
                                 <div className={`text-2xl font-black ${res.aiColor}`}>{res.aiScore}</div>
                                 <div className="flex flex-col">
                                     <span className={`font-bold ${res.aiColor} text-sm flex items-center gap-1 uppercase`}>
-                                        AI Analysis: {res.aiLabel}
+                                        AI 분석: {res.aiLabel}
                                     </span>
-                                    <span className="text-xs text-slate-500">Based on wind, pressure, & historical data</span>
+                                    <span className="text-xs text-slate-500">기압, 수온, 이력 데이터 기반 분석</span>
                                 </div>
                             </div>
                         ) : (
                             <div className="mt-2 text-center py-2 border-t border-white/5 bg-slate-900/40 rounded">
                                 <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
-                                    <Star size={12} className="text-premium-gold" /> Premium: Unlock AI Fishing Analysis
+                                    <Star size={12} className="text-premium-gold" /> 프리미엄: AI 낚시 적합도 분석 잠금해제
                                 </p>
                             </div>
                         )}
