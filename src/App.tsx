@@ -11,53 +11,53 @@ function App() {
     const [isPremium, setIsPremium] = useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
             {/* Header */}
-            <header className="sticky top-0 z-50 glass-panel !rounded-none !border-x-0 !border-t-0 p-3 border-b border-white/10">
+            <header className="sticky top-0 z-50 glass-panel !rounded-none !border-x-0 !border-t-0 p-3 border-b border-white/20 bg-slate-800/80">
                 <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
-                        <Anchor className="text-accent" size={20} />
-                        <h1 className="text-lg font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                        <Anchor className="text-sky-400" size={22} />
+                        <h1 className="text-lg font-extrabold bg-gradient-to-r from-white to-sky-200 bg-clip-text text-transparent tracking-tight">
                             BassMap
                         </h1>
                     </div>
                     <button
                         onClick={() => setIsPremium(!isPremium)}
-                        className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border transition-all ${isPremium
-                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                        className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full border transition-all ${isPremium
+                            ? 'bg-amber-400/20 border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                            : 'bg-slate-700/50 border-slate-600 text-slate-400 hover:text-white hover:bg-slate-600'
                             }`}
                     >
-                        <Crown size={10} fill={isPremium ? "currentColor" : "none"} />
+                        <Crown size={12} fill={isPremium ? "currentColor" : "none"} />
                         {isPremium ? '프리미엄' : '일반'}
                     </button>
                 </div>
 
-                {/* Top Tabs - Compact Single Line */}
-                <nav className="flex gap-1 p-1 bg-slate-900/50 rounded-lg">
+                {/* Top Tabs - Brighter & More Sophisticated */}
+                <nav className="flex gap-1.5 p-1 bg-slate-700/40 rounded-xl border border-white/5">
                     <button
                         onClick={() => setActiveTab('my-points')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'my-points'
-                            ? 'bg-accent text-slate-900 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
-                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'my-points'
+                            ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                             }`}
                     >
                         내 포인트
                     </button>
                     <button
                         onClick={() => setActiveTab('register')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'register'
-                            ? 'bg-accent text-slate-900 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
-                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'register'
+                            ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                             }`}
                     >
                         포인트 등록
                     </button>
                     <button
                         onClick={() => setActiveTab('search')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${activeTab === 'search'
-                            ? 'bg-accent text-slate-900 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
-                            : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'search'
+                            ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                             }`}
                     >
                         검색
@@ -66,7 +66,7 @@ function App() {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 relative overflow-y-auto">
+            <main className="flex-1 relative overflow-hidden flex flex-col">
                 {activeTab === 'my-points' && <MyPoints />}
                 {activeTab === 'register' && <RegisterPoint isPremium={isPremium} />}
                 {activeTab === 'search' && <SearchPoints isPremium={isPremium} />}
