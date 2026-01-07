@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Navigation } from 'lucide-react';
+import { Search, Navigation, Database, WifiOff } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -50,81 +50,120 @@ const MOCK_RESERVOIRS: Reservoir[] = [
 
 export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
     const [activePoint, setActivePoint] = useState<number | null>(null);
-    const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]); // Default center (Korea)
+    const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [reservoirs, setReservoirs] = useState<Reservoir[]>(MOCK_RESERVOIRS); // Start with mock data
+    const [reservoirs, setReservoirs] = useState<Reservoir[]>(MOCK_RESERVOIRS);
+    const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        // Initial fetch attempt
-        fetchReservoirs();
+        checkDbConnection();
     }, []);
 
-    const fetchReservoirs = async (query: string = '') => {
+    const checkDbConnection = async () => {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+            // Just try to fetch all to check connection
+            const response = await fetch('http://localhost:3000/api/reservoirs', {
+                method: 'GET',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                setDbStatus('connected');
+                const data = await response.json();
+                setReservoirs(data);
+            } else {
+                setDbStatus('disconnected');
+            }
+        } catch (e) {
+            setDbStatus('disconnected');
+        }
+    };
+
+    const fetchReservoirs = async (query: string = '') => {
+        if (dbStatus === 'disconnected') {
+            // Local fallback filter
+            if (query) {
+                return MOCK_RESERVOIRS.filter(r => r.name.includes(query));
+            }
+            return MOCK_RESERVOIRS;
+        }
+
+        try {
+            setIsSearching(true);
             const url = query
                 ? `http://localhost:3000/api/reservoirs?q=${encodeURIComponent(query)}`
                 : 'http://localhost:3000/api/reservoirs';
 
-            // Add a timeout to prevent hanging if server is unreachable
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 second timeout
-
-            const response = await fetch(url, { signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                // If query exists and server fail, filter mock data locally
-                if (query) {
-                    const filtered = MOCK_RESERVOIRS.filter(r => r.name.includes(query));
-                    setReservoirs(filtered);
-                    return filtered;
-                }
-                return;
-            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Server error');
 
             const data = await response.json();
             setReservoirs(data);
+            setIsSearching(false);
             return data;
         } catch (error) {
-            console.log('Backend server unreachable, using offline data.');
-            // Fallback to local search if query exists
+            console.error(error);
+            setDbStatus('disconnected'); // Switch to disconnected mode if fetch fails
+            setIsSearching(false);
+            // Fallback
             if (query) {
                 const filtered = MOCK_RESERVOIRS.filter(r => r.name.includes(query));
                 setReservoirs(filtered);
                 return filtered;
-            } else {
-                setReservoirs(MOCK_RESERVOIRS);
             }
+            setReservoirs(MOCK_RESERVOIRS);
+            return MOCK_RESERVOIRS;
         }
     };
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
-            fetchReservoirs();
+            const data = await fetchReservoirs(); // Reset
+            if (data && data.length > 0) {
+                setMapCenter([data[0].lat, data[0].lng]);
+            }
             return;
         }
 
         const filteredData = await fetchReservoirs(searchQuery);
 
-        // If fetch returns data (either from server or local fallback), use it
-        // Or if we just updated state, check state? 
-        // Best to use the returned value from async function if possible.
-        // If fetchReservoirs returns undefined (e.g. error handled but no return), check state implicitly via effect or fallback behavior.
-        // But since we modified fetchReservoirs to return data in catch block...
-
-        const dataToUse = filteredData || MOCK_RESERVOIRS.filter(r => r.name.includes(searchQuery));
-
-        if (dataToUse && dataToUse.length > 0) {
-            const first = dataToUse[0];
+        if (filteredData && filteredData.length > 0) {
+            const first = filteredData[0];
             setMapCenter([first.lat, first.lng]);
             setActivePoint(first.id);
         } else {
-            alert('검색 결과가 없습니다.');
+            const msg = dbStatus === 'connected'
+                ? `'${searchQuery}'에 대한 검색 결과가 없습니다.`
+                : `'${searchQuery}'에 대한 검색 결과가 없습니다.\n(현재 로컬 DB 미연결로 샘플 데이터에서만 검색되었습니다)`;
+            alert(msg);
         }
     };
 
     return (
         <div className="relative h-full w-full bg-slate-900">
+            {/* Connection Status Indicator */}
+            <div className={`absolute top-4 left-4 z-[501] px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 shadow-lg border ${dbStatus === 'connected'
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+                }`}>
+                {dbStatus === 'connected' ? (
+                    <>
+                        <Database size={10} />
+                        DB 연결됨
+                    </>
+                ) : (
+                    <>
+                        <WifiOff size={10} />
+                        DB 오프라인 (샘플모드)
+                    </>
+                )}
+            </div>
+
             {/* Map Container */}
             <div className="absolute inset-0 z-0 h-full w-full">
                 <MapContainer center={mapCenter} zoom={7} style={{ height: '100%', width: '100%' }} zoomControl={false}>
@@ -150,20 +189,24 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
             </div>
 
             {/* Overlay Search Bar */}
-            <div className="absolute top-4 left-4 right-4 z-[500] flex gap-2">
+            <div className="absolute top-14 left-4 right-4 z-[500] flex gap-2">
                 <div className="glass-panel flex-1 flex items-center gap-2 px-3 py-2 shadow-xl bg-slate-900/80 backdrop-blur-md">
-                    <Search className="text-slate-400" size={20} />
+                    <Search className={`text-slate-400 ${isSearching ? 'animate-pulse text-sky-400' : ''}`} size={20} />
                     <input
                         type="text"
-                        placeholder="지역명 또는 저수지 검색 (예: 충주호)"
+                        placeholder={dbStatus === 'connected' ? "전국 저수지 검색" : "샘플 데이터 검색 (예: 충주호)"}
                         className="bg-transparent border-none outline-none text-white w-full text-sm placeholder:text-slate-500"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                 </div>
-                <button onClick={handleSearch} className="glass-panel p-2 bg-accent text-slate-900 shadow-xl flex items-center justify-center rounded-xl">
-                    <Navigation size={20} fill="currentColor" />
+                <button onClick={handleSearch} disabled={isSearching} className="glass-panel p-2 bg-accent text-slate-900 shadow-xl flex items-center justify-center rounded-xl hover:scale-105 transition-transform">
+                    {isSearching ? (
+                        <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                        <Navigation size={20} fill="currentColor" />
+                    )}
                 </button>
             </div>
 
