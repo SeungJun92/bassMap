@@ -3,62 +3,67 @@
 @tailwind utilities;
 
 :root {
-  /* Updated Palette: Lighter, Sophisticated "Marine" Blue Theme */
   --bg-primary: #0f172a;
-  /* Slate 900 */
   --bg-secondary: #334155;
-  /* Slate 700 */
   --accent: #38bdf8;
-  /* Sky 400 */
   --premium-gold: #fbbf24;
-  /* Amber 400 */
   --text-primary: #f1f5f9;
-  /* Slate 100 */
   --text-secondary: #94a3b8;
-  /* Slate 400 */
 }
 
-body {
+/* 전체 화면 높이 고정 및 스크롤 방지 */
+html,
+body,
+#root {
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
-/* Leaflet Map Fix for Mobile */
+/* 리플렛 지도 컨테이너가 부모 높이를 무조건 다 채우도록 강제 */
 .leaflet-container {
-  width: 100%;
-  height: 100%;
-  background-color: #1e293b;
-  z-index: 10;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 400px;
+  background-color: #0f172a !important;
+  z-index: 1;
+}
+
+/* 헤더와 메인 영역의 유연한 배치 */
+#root {
+  display: flex;
+  flex-direction: column;
 }
 
 @layer components {
-
-  /* Lighter Glass Panel */
   .glass-panel {
     @apply bg-slate-800/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-lg;
   }
-
-  .btn {
-    @apply px-4 py-2 rounded-xl font-bold transition-all active:scale-95;
-  }
 }
 
-/* Animations */
-@keyframes fadeIn {
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes slideUp {
   from {
-    opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(100%);
   }
 
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
