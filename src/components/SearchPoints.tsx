@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Navigation, Database, WifiOff, Map as MapIcon, Layers, Crosshair, Cloud, Bell, User, Fish, Wind, Droplets, Star, ChevronLeft } from 'lucide-react';
+import { Search, Navigation, Map as MapIcon, Layers, Crosshair, Cloud, User, Fish, Wind, Droplets, Star, ChevronLeft } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -44,13 +44,13 @@ const MOCK_RESERVOIRS: Reservoir[] = [
     { id: 4, name: '평택호 (당거리)', lat: 36.9537, lng: 126.9741, weather: '맑음', wind: '3m/s', waterLevel: '90%', liveUsers: 25, aiScore: 78, aiColor: 'text-yellow-400', aiLabel: '보통' }
 ];
 
-export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
+export default function SearchPoints({ isPremium: _isPremium }: { isPremium: boolean }) {
     const [activePoint, setActivePoint] = useState<number | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]);
     const [searchQuery, setSearchQuery] = useState('');
     const [reservoirs, setReservoirs] = useState<Reservoir[]>(MOCK_RESERVOIRS);
     const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-    const [isSearching, setIsSearching] = useState(false);
+    const [_isSearching, setIsSearching] = useState(false);
     const [showResultsList, setShowResultsList] = useState(false);
 
     useEffect(() => {
@@ -125,7 +125,7 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
                 <MapContainer center={mapCenter} zoom={7} style={{ height: '100%', width: '100%' }} zoomControl={false}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <MapUpdater center={mapCenter} />
-                    {reservoirs.map((res) => (
+                    {reservoirs.map((res: Reservoir) => (
                         <Marker
                             key={res.id}
                             position={[res.lat, res.lng]}
@@ -217,7 +217,7 @@ export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
                         <button onClick={() => setShowResultsList(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ChevronLeft size={20} /></button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                        {reservoirs.map(res => (
+                        {reservoirs.map((res: Reservoir) => (
                             <div
                                 key={res.id}
                                 onClick={() => { setActivePoint(res.id); setMapCenter([res.lat, res.lng]); setShowResultsList(false); }}
