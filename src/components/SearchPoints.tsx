@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Navigation } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -20,30 +20,104 @@ function MapUpdater({ center }: { center: [number, number] }) {
     return null;
 }
 
+interface Reservoir {
+    id: number;
+    name: string;
+    lat: number;
+    lng: number;
+    weather: string;
+    wind: string;
+    waterLevel: string;
+    liveUsers: number;
+    aiScore: number;
+    aiColor: string;
+    aiLabel: string;
+}
+
+// Fallback data for when the backend is offline
+const MOCK_RESERVOIRS: Reservoir[] = [
+    { id: 1, name: '충주호 (제일钓)', lat: 37.0055, lng: 128.0261, weather: '흐림', wind: '2m/s', waterLevel: '72%', liveUsers: 12, aiScore: 92, aiColor: 'text-green-400', aiLabel: '매우 좋음' },
+    { id: 2, name: '안동호 (주진교)', lat: 36.6366, lng: 128.8465, weather: '비', wind: '5m/s', waterLevel: '65%', liveUsers: 3, aiScore: 45, aiColor: 'text-red-400', aiLabel: '나쁨' },
+    { id: 3, name: '대청호 (문의)', lat: 36.4674, lng: 127.4851, weather: '맑음', wind: '1m/s', waterLevel: '80%', liveUsers: 8, aiScore: 85, aiColor: 'text-green-400', aiLabel: '좋음' },
+    { id: 4, name: '평택호 (당거리)', lat: 36.9537, lng: 126.9741, weather: '맑음', wind: '3m/s', waterLevel: '90%', liveUsers: 25, aiScore: 78, aiColor: 'text-yellow-400', aiLabel: '보통' },
+    { id: 5, name: '삽교호 (운정)', lat: 36.8647, lng: 126.8378, weather: '흐림', wind: '4m/s', waterLevel: '88%', liveUsers: 15, aiScore: 60, aiColor: 'text-yellow-400', aiLabel: '보통' },
+    { id: 6, name: '예당지 (대회장)', lat: 36.6578, lng: 126.7725, weather: '맑음', wind: '2m/s', waterLevel: '75%', liveUsers: 30, aiScore: 88, aiColor: 'text-green-400', aiLabel: '좋음' },
+    { id: 7, name: '낙동강 (강정고령보)', lat: 35.8457, lng: 128.4687, weather: '구름많음', wind: '1m/s', waterLevel: '60%', liveUsers: 5, aiScore: 70, aiColor: 'text-yellow-400', aiLabel: '보통' },
+    { id: 8, name: '춘천호 (고탄)', lat: 37.9739, lng: 127.6894, weather: '맑음', wind: '0m/s', waterLevel: '82%', liveUsers: 2, aiScore: 95, aiColor: 'text-green-400', aiLabel: '최고' },
+    { id: 9, name: '장성호 (슬로프)', lat: 35.3585, lng: 126.7645, weather: '비', wind: '6m/s', waterLevel: '95%', liveUsers: 0, aiScore: 30, aiColor: 'text-red-400', aiLabel: '매우 나쁨' },
+    { id: 10, name: '합천호 (봉산)', lat: 35.6173, lng: 128.0202, weather: '흐림', wind: '2m/s', waterLevel: '55%', liveUsers: 7, aiScore: 82, aiColor: 'text-green-400', aiLabel: '좋음' }
+];
+
 export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
     const [activePoint, setActivePoint] = useState<number | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]); // Default center (Korea)
     const [searchQuery, setSearchQuery] = useState('');
+    const [reservoirs, setReservoirs] = useState<Reservoir[]>(MOCK_RESERVOIRS); // Start with mock data
 
-    // Extended Mock Data with Coordinates
-    const reservoirs = [
-        { id: 1, name: '충주호 (제일钓)', lat: 37.0055, lng: 128.0261, weather: '흐림', wind: '2m/s', waterLevel: '72%', liveUsers: 12, aiScore: 92, aiColor: 'text-green-400', aiLabel: '매우 좋음' },
-        { id: 2, name: '안동호 (주진교)', lat: 36.6366, lng: 128.8465, weather: '비', wind: '5m/s', waterLevel: '65%', liveUsers: 3, aiScore: 45, aiColor: 'text-red-400', aiLabel: '나쁨' },
-        { id: 3, name: '대청호 (문의)', lat: 36.4674, lng: 127.4851, weather: '맑음', wind: '1m/s', waterLevel: '80%', liveUsers: 8, aiScore: 85, aiColor: 'text-green-400', aiLabel: '좋음' },
-        { id: 4, name: '평택호 (당거리)', lat: 36.9537, lng: 126.9741, weather: '맑음', wind: '3m/s', waterLevel: '90%', liveUsers: 25, aiScore: 78, aiColor: 'text-yellow-400', aiLabel: '보통' },
-        { id: 5, name: '삽교호 (운정)', lat: 36.8647, lng: 126.8378, weather: '흐림', wind: '4m/s', waterLevel: '88%', liveUsers: 15, aiScore: 60, aiColor: 'text-yellow-400', aiLabel: '보통' },
-        { id: 6, name: '예당지 (대회장)', lat: 36.6578, lng: 126.7725, weather: '맑음', wind: '2m/s', waterLevel: '75%', liveUsers: 30, aiScore: 88, aiColor: 'text-green-400', aiLabel: '좋음' },
-        { id: 7, name: '낙동강 (강정고령보)', lat: 35.8457, lng: 128.4687, weather: '구름많음', wind: '1m/s', waterLevel: '60%', liveUsers: 5, aiScore: 70, aiColor: 'text-yellow-400', aiLabel: '보통' },
-        { id: 8, name: '춘천호 (고탄)', lat: 37.9739, lng: 127.6894, weather: '맑음', wind: '0m/s', waterLevel: '82%', liveUsers: 2, aiScore: 95, aiColor: 'text-green-400', aiLabel: '최고' },
-        { id: 9, name: '장성호 (슬로프)', lat: 35.3585, lng: 126.7645, weather: '비', wind: '6m/s', waterLevel: '95%', liveUsers: 0, aiScore: 30, aiColor: 'text-red-400', aiLabel: '매우 나쁨' },
-        { id: 10, name: '합천호 (봉산)', lat: 35.6173, lng: 128.0202, weather: '흐림', wind: '2m/s', waterLevel: '55%', liveUsers: 7, aiScore: 82, aiColor: 'text-green-400', aiLabel: '좋음' }
-    ];
+    useEffect(() => {
+        // Initial fetch attempt
+        fetchReservoirs();
+    }, []);
 
-    const handleSearch = () => {
-        const found = reservoirs.find(r => r.name.includes(searchQuery));
-        if (found) {
-            setMapCenter([found.lat, found.lng]);
-            setActivePoint(found.id);
+    const fetchReservoirs = async (query: string = '') => {
+        try {
+            const url = query
+                ? `http://localhost:3000/api/reservoirs?q=${encodeURIComponent(query)}`
+                : 'http://localhost:3000/api/reservoirs';
+
+            // Add a timeout to prevent hanging if server is unreachable
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 second timeout
+
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                // If query exists and server fail, filter mock data locally
+                if (query) {
+                    const filtered = MOCK_RESERVOIRS.filter(r => r.name.includes(query));
+                    setReservoirs(filtered);
+                    return filtered;
+                }
+                return;
+            }
+
+            const data = await response.json();
+            setReservoirs(data);
+            return data;
+        } catch (error) {
+            console.log('Backend server unreachable, using offline data.');
+            // Fallback to local search if query exists
+            if (query) {
+                const filtered = MOCK_RESERVOIRS.filter(r => r.name.includes(query));
+                setReservoirs(filtered);
+                return filtered;
+            } else {
+                setReservoirs(MOCK_RESERVOIRS);
+            }
+        }
+    };
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) {
+            fetchReservoirs();
+            return;
+        }
+
+        const filteredData = await fetchReservoirs(searchQuery);
+
+        // If fetch returns data (either from server or local fallback), use it
+        // Or if we just updated state, check state? 
+        // Best to use the returned value from async function if possible.
+        // If fetchReservoirs returns undefined (e.g. error handled but no return), check state implicitly via effect or fallback behavior.
+        // But since we modified fetchReservoirs to return data in catch block...
+
+        const dataToUse = filteredData || MOCK_RESERVOIRS.filter(r => r.name.includes(searchQuery));
+
+        if (dataToUse && dataToUse.length > 0) {
+            const first = dataToUse[0];
+            setMapCenter([first.lat, first.lng]);
+            setActivePoint(first.id);
         } else {
             alert('검색 결과가 없습니다.');
         }
