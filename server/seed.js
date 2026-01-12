@@ -10,7 +10,12 @@ const reservoirs = [
     { name: '낙동강 (강정고령보)', lat: 35.8457, lng: 128.4687, weather: '구름많음', wind: '1m/s', water_level: '60%', live_users: 5, ai_score: 70, ai_color: 'text-yellow-400', ai_label: '보통' },
     { name: '춘천호 (고탄)', lat: 37.9739, lng: 127.6894, weather: '맑음', wind: '0m/s', water_level: '82%', live_users: 2, ai_score: 95, ai_color: 'text-green-400', ai_label: '최고' },
     { name: '장성호 (슬로프)', lat: 35.3585, lng: 126.7645, weather: '비', wind: '6m/s', water_level: '95%', live_users: 0, ai_score: 30, ai_color: 'text-red-400', ai_label: '매우 나쁨' },
-    { name: '합천호 (봉산)', lat: 35.6173, lng: 128.0202, weather: '흐림', wind: '2m/s', water_level: '55%', live_users: 7, ai_score: 82, ai_color: 'text-green-400', ai_label: '좋음' }
+    { name: '합천호 (봉산)', lat: 35.6173, lng: 128.0202, weather: '흐림', wind: '2m/s', water_level: '55%', live_users: 7, ai_score: 82, ai_color: 'text-green-400', ai_label: '좋음' },
+    { name: '나주호 (선착장)', lat: 34.9255, lng: 126.8451, weather: '맑음', wind: '1m/s', water_level: '78%', live_users: 10, ai_score: 87, ai_color: 'text-green-400', ai_label: '좋음' },
+    { name: '파로호 (상무룡)', lat: 38.0833, lng: 127.8166, weather: '흐림', wind: '2m/s', water_level: '85%', live_users: 4, ai_score: 91, ai_color: 'text-green-400', ai_label: '매우 좋음' },
+    { name: '금강 (생초)', lat: 35.2501, lng: 127.1500, weather: '맑음', wind: '1m/s', water_level: '65%', live_users: 12, ai_score: 75, ai_color: 'text-yellow-400', ai_label: '보통' },
+    { name: '영산강 (승촌보)', lat: 35.1000, lng: 126.7500, weather: '구름많음', wind: '3m/s', water_level: '70%', live_users: 8, ai_score: 68, ai_color: 'text-yellow-400', ai_label: '보통' },
+    { name: '섬진강 (구례)', lat: 35.2000, lng: 127.4500, weather: '맑음', wind: '2m/s', water_level: '60%', live_users: 6, ai_score: 80, ai_color: 'text-green-400', ai_label: '좋음' }
 ];
 
 async function seed() {
@@ -35,7 +40,7 @@ async function seed() {
         console.log('Clearing old data...');
         await db.query('TRUNCATE TABLE reservoirs RESTART IDENTITY;');
 
-        console.log('Inserting new data...');
+        console.log('Inserting new comprehensive data...');
         for (const res of reservoirs) {
             await db.query(`
                 INSERT INTO reservoirs (name, lat, lng, weather, wind, water_level, live_users, ai_score, ai_color, ai_label)
@@ -43,7 +48,7 @@ async function seed() {
             `, [res.name, res.lat, res.lng, res.weather, res.wind, res.water_level, res.live_users, res.ai_score, res.ai_color, res.ai_label]);
         }
 
-        console.log('Seeding completed successfully.');
+        console.log('Seeding completed successfully with 15 reservoirs.');
         process.exit(0);
     } catch (err) {
         console.error('Error seeding database:', err);
