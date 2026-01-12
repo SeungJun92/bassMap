@@ -37,18 +37,16 @@ interface Reservoir {
     aiLabel: string;
 }
 
-const MOCK_RESERVOIRS: Reservoir[] = [
-    { id: 1, name: '충주호 (제일钓)', lat: 37.0055, lng: 128.0261, weather: '흐림', wind: '2m/s', waterLevel: '72%', liveUsers: 12, aiScore: 92, aiColor: 'text-green-400', aiLabel: '매우 좋음' },
-    { id: 2, name: '안동호 (주진교)', lat: 36.6366, lng: 128.8465, weather: '비', wind: '5m/s', waterLevel: '65%', liveUsers: 3, aiScore: 45, aiColor: 'text-red-400', aiLabel: '나쁨' },
-    { id: 3, name: '대청호 (문의)', lat: 36.4674, lng: 127.4851, weather: '맑음', wind: '1m/s', waterLevel: '80%', liveUsers: 8, aiScore: 85, aiColor: 'text-green-400', aiLabel: '좋음' },
-    { id: 4, name: '평택호 (당거리)', lat: 36.9537, lng: 126.9741, weather: '맑음', wind: '3m/s', waterLevel: '90%', liveUsers: 25, aiScore: 78, aiColor: 'text-yellow-400', aiLabel: '보통' }
-];
+import { supabase } from '../supabase';
+
+// ... (previous imports)
 
 export default function SearchPoints({ isPremium: _isPremium }: { isPremium: boolean }) {
+    // ... (state definitions remain the same)
     const [activePoint, setActivePoint] = useState<number | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [reservoirs, setReservoirs] = useState<Reservoir[]>(MOCK_RESERVOIRS);
+    const [reservoirs, setReservoirs] = useState<Reservoir[]>([]);
     const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
     const [_isSearching, setIsSearching] = useState(false);
     const [showResultsList, setShowResultsList] = useState(false);
@@ -59,13 +57,11 @@ export default function SearchPoints({ isPremium: _isPremium }: { isPremium: boo
 
     const checkDbConnection = async () => {
         try {
-            const controller = new AbortController();
-            setTimeout(() => controller.abort(), 2000);
-            const response = await fetch('/api/reservoirs', { signal: controller.signal });
-            if (response.ok) {
+            const { error } = await supabase.from('reservoirs').select('count', { count: 'exact', head: true });
+            if (!error) {
                 setDbStatus('connected');
-                const data = await response.json();
-                setReservoirs(data);
+                // Optional: Fetch initial data
+                fetchReservoirs();
             } else {
                 setDbStatus('disconnected');
             }
@@ -77,20 +73,24 @@ export default function SearchPoints({ isPremium: _isPremium }: { isPremium: boo
     const fetchReservoirs = async (query: string = '') => {
         setIsSearching(true);
         try {
-            const baseUrl = '/api/reservoirs';
-            const url = query ? `${baseUrl}?q=${encodeURIComponent(query)}` : baseUrl;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('API Error');
-            const data = await response.json();
-            setReservoirs(data);
+            let queryBuilder = supabase.from('reservoirs').select('*');
+
+            if (query) {
+                queryBuilder = queryBuilder.ilike('name', `%${query}%`);
+            }
+
+            const { data, error } = await queryBuilder;
+
+            if (error) throw error;
+
+            const typedData = (data || []) as Reservoir[];
+            setReservoirs(typedData);
             setIsSearching(false);
-            return data;
+            return typedData;
         } catch (error) {
-            console.error('Fetch error, using mock data:', error);
-            const data = query ? MOCK_RESERVOIRS.filter(r => r.name.includes(query)) : MOCK_RESERVOIRS;
-            setReservoirs(data);
+            console.error('Supabase fetch error:', error);
             setIsSearching(false);
-            return data;
+            return [];
         }
     };
 
