@@ -79,7 +79,7 @@ function App() {
                 )}
                 {activeTab === 'search' && (
                     <div className="absolute inset-0">
-                        <SearchPoints isPremium={isPremium} />
+                        <SearchPoints />
                         {/* Floating back button to return to categories/menu if needed */}
                         <button
                             onClick={() => setActiveTab('my-points')}
