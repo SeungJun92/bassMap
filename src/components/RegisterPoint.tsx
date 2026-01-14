@@ -14,10 +14,22 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function LocationMarker({ position, setPosition }: { position: [number, number], setPosition: (pos: [number, number]) => void }) {
+function LocationMarker({ position, setPosition, setAddress }: { position: [number, number], setPosition: (pos: [number, number]) => void, setAddress: (addr: string) => void }) {
     useMapEvents({
-        click(e) {
-            setPosition([e.latlng.lat, e.latlng.lng]);
+        async click(e) {
+            const newPos: [number, number] = [e.latlng.lat, e.latlng.lng];
+            setPosition(newPos);
+
+            // Reverse Geocoding using OSM Nominatim
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${e.latlng.lat}&lon=${e.latlng.lng}`);
+                const data = await response.json();
+                if (data && data.display_name) {
+                    setAddress(data.display_name);
+                }
+            } catch (err) {
+                console.error('Failed to fetch address:', err);
+            }
         },
     });
     return <Marker position={position} />;
@@ -164,7 +176,11 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
                     <MapUpdater center={mapPos} />
-                    <LocationMarker position={mapPos} setPosition={setMapPos} />
+                    <LocationMarker
+                        position={mapPos}
+                        setPosition={setMapPos}
+                        setAddress={(addr) => setFormData(prev => ({ ...prev, address: addr }))}
+                    />
                 </MapContainer>
                 <div className="p-2 bg-slate-800/80 text-[10px] text-center text-slate-400 border-t border-slate-700">
                     지도를 클릭하여 핀의 위치를 지정할 수 있습니다.
