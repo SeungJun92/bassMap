@@ -22,10 +22,21 @@ function LocationMarker({ position, setPosition, setAddress }: { position: [numb
 
             // Reverse Geocoding using OSM Nominatim
             try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${e.latlng.lat}&lon=${e.latlng.lng}`);
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${e.latlng.lat}&lon=${e.latlng.lng}&addressdetails=1`);
                 const data = await response.json();
-                if (data && data.display_name) {
-                    setAddress(data.display_name);
+                if (data && data.address) {
+                    const addr = data.address;
+                    // Format as: Province City/District Road/Village Number
+                    const parts = [
+                        addr.province || addr.city_district || '',
+                        addr.city || addr.municipality || '',
+                        addr.suburb || addr.borough || '',
+                        addr.road || addr.village || addr.neighbourhood || '',
+                        addr.house_number || ''
+                    ].filter(Boolean);
+
+                    const formattedAddr = parts.join(' ');
+                    setAddress(formattedAddr || data.display_name);
                 }
             } catch (err) {
                 console.error('Failed to fetch address:', err);

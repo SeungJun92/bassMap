@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Trash2, Edit2, ChevronRight, Calendar } from 'lucide-react';
+import { MapPin, Trash2, Edit2, ChevronRight, ChevronDown, Calendar, Navigation, Info, Car, Droplets, Fish } from 'lucide-react';
 import { supabase } from '../supabase';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+const DefaultIcon = L.icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface Point {
     id: number;
@@ -20,6 +31,7 @@ interface Point {
 export default function MyPoints() {
     const [points, setPoints] = useState<Point[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [expandedPointId, setExpandedPointId] = useState<number | null>(null);
 
     const fetchPoints = async () => {
         try {
@@ -47,6 +59,7 @@ export default function MyPoints() {
 
             if (error) throw error;
             setPoints(points.filter(p => p.id !== id));
+            if (expandedPointId === id) setExpandedPointId(null);
         } catch (err) {
             console.error('Failed to delete point:', err);
         }
@@ -85,18 +98,22 @@ export default function MyPoints() {
             ) : (
                 <div className="space-y-4">
                     {points.map((point) => (
-                        <div key={point.id} className="group glass-panel p-4 bg-slate-800/40 border-white/5 hover:border-sky-500/30 transition-all duration-300 rounded-2xl relative overflow-hidden active:scale-[0.98]">
-                            {/* Decorative background accent */}
-                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-sky-500/5 blur-3xl group-hover:bg-sky-500/10 transition-all"></div>
+                        <div key={point.id} className={`group glass-panel border-white/5 transition-all duration-300 rounded-3xl relative overflow-hidden ${expandedPointId === point.id ? 'bg-slate-800/60 border-sky-500/30' : 'bg-slate-800/40 hover:border-white/10'}`}>
 
-                            <div className="flex justify-between items-start relative z-10">
+                            {/* Summary Header */}
+                            <div
+                                className="p-5 flex justify-between items-start cursor-pointer transition-all active:scale-[0.99]"
+                                onClick={() => setExpandedPointId(expandedPointId === point.id ? null : point.id)}
+                            >
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-black text-white group-hover:text-sky-400 transition-colors flex items-center gap-2">
-                                        {point.name}
-                                        <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                                    </h3>
-                                    <div className="flex items-center gap-3 mt-2">
-                                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold bg-slate-900/50 px-2 py-0.5 rounded-md border border-white/5">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-lg font-black text-white group-hover:text-sky-400 transition-colors">
+                                            {point.name}
+                                        </h3>
+                                        {expandedPointId === point.id ? <ChevronDown size={18} className="text-sky-500" /> : <ChevronRight size={18} className="text-slate-600" />}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
                                             <MapPin size={10} className="text-sky-500" />
                                             {point.address || '주소 정보 없음'}
                                         </div>
@@ -105,29 +122,80 @@ export default function MyPoints() {
                                             {new Date(point.created_at).toLocaleDateString()}
                                         </div>
                                     </div>
-
-                                    {point.notes && (
-                                        <p className="text-xs text-slate-500 mt-3 line-clamp-1 italic">
-                                            "{point.notes}"
-                                        </p>
-                                    )}
                                 </div>
 
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => {/* TODO: Implement Edit Modal */ }}
-                                        className="p-2.5 bg-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-600 transition-all rounded-xl border border-white/5 shadow-inner"
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
+                                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                                     <button
                                         onClick={() => deletePoint(point.id)}
-                                        className="p-2.5 bg-red-500/10 text-red-400 hover:text-white hover:bg-red-500 transition-all rounded-xl border border-red-500/20 shadow-lg shadow-red-500/5"
+                                        className="p-2.5 bg-red-500/10 text-red-500/60 hover:text-white hover:bg-red-500 transition-all rounded-xl border border-red-500/10"
                                     >
                                         <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Expanded Content */}
+                            {expandedPointId === point.id && (
+                                <div className="px-5 pb-5 animate-slide-up">
+                                    <div className="h-[200px] rounded-2xl overflow-hidden border border-white/5 mb-5 shadow-inner">
+                                        <MapContainer
+                                            center={[point.lat, point.lng]}
+                                            zoom={15}
+                                            zoomControl={false}
+                                            scrollWheelZoom={false}
+                                            dragging={false}
+                                            doubleClickZoom={false}
+                                            style={{ height: '100%', width: '100%' }}
+                                        >
+                                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                            <Marker position={[point.lat, point.lng]} />
+                                        </MapContainer>
+                                    </div>
+
+                                    {/* Detailed Info Grid */}
+                                    <div className="grid grid-cols-2 gap-3 mb-5">
+                                        <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
+                                                <Droplets size={12} className="text-sky-400" /> 수위
+                                            </div>
+                                            <div className="text-sm font-bold text-slate-200">{point.water_level || '-'}</div>
+                                        </div>
+                                        <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
+                                                <Car size={12} className="text-emerald-400" /> 주차
+                                            </div>
+                                            <div className="text-sm font-bold text-slate-200">{point.parking || '-'}</div>
+                                        </div>
+                                        <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
+                                                <Fish size={12} className="text-amber-400" /> 채비
+                                            </div>
+                                            <div className="text-sm font-bold text-slate-200">{point.rig || '-'}</div>
+                                        </div>
+                                        <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
+                                                <Navigation size={12} className="text-rose-400" /> 액션
+                                            </div>
+                                            <div className="text-sm font-bold text-slate-200">{point.action || '-'}</div>
+                                        </div>
+                                    </div>
+
+                                    {point.notes && (
+                                        <div className="bg-sky-500/5 p-4 rounded-2xl border border-sky-500/10 mb-4">
+                                            <div className="flex items-center gap-2 text-[10px] text-sky-400 font-black uppercase tracking-wider mb-2">
+                                                <Info size={12} /> 메모
+                                            </div>
+                                            <p className="text-xs text-slate-300 leading-relaxed italic">
+                                                "{point.notes}"
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <button className="w-full py-3 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-400 transition-all">
+                                        <Navigation size={14} fill="currentColor" /> 길찾기 시작
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
