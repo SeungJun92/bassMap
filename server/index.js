@@ -19,7 +19,7 @@ const MOCK_RESERVOIRS = [
     { id: 10, name: '합천호 (봉산)', lat: 35.6173, lng: 128.0202, weather: '흐림', wind: '2m/s', waterLevel: '55%', liveUsers: 7, aiScore: 82, aiColor: 'text-green-400', aiLabel: '좋음' }
 ];
 
-// Search endpoint
+// Search reservoirs
 app.get('/api/reservoirs', async (req, res) => {
     const { q } = req.query;
     try {
@@ -50,12 +50,71 @@ app.get('/api/reservoirs', async (req, res) => {
         res.json(mappedResults);
     } catch (err) {
         console.error('Database error, falling back to mock data:', err.message);
-        // Fallback for demo purposes
         let results = MOCK_RESERVOIRS;
         if (q) {
             results = MOCK_RESERVOIRS.filter(r => r.name.includes(q));
         }
         res.json(results);
+    }
+});
+
+// Get personal points
+app.get('/api/points', async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM personal_points ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Add personal point
+app.post('/api/points', async (req, res) => {
+    const { name, address, lat, lng, cost, water_level, parking, rig, action, notes } = req.body;
+    try {
+        const result = await db.query(
+            `INSERT INTO personal_points 
+            (name, address, lat, lng, cost, water_level, parking, rig, action, notes) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [name, address, lat, lng, cost, water_level, parking, rig, action, notes]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Update personal point
+app.put('/api/points/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, address, lat, lng, cost, water_level, parking, rig, action, notes } = req.body;
+    try {
+        const result = await db.query(
+            `UPDATE personal_points SET 
+            name=$1, address=$2, lat=$3, lng=$4, cost=$5, water_level=$6, parking=$7, rig=$8, action=$9, notes=$10 
+            WHERE id=$11 RETURNING *`,
+            [name, address, lat, lng, cost, water_level, parking, rig, action, notes, id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Point not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Delete personal point
+app.delete('/api/points/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await db.query('DELETE FROM personal_points WHERE id=$1', [id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Point not found' });
+        res.json({ message: 'Deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
