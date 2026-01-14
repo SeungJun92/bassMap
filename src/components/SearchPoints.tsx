@@ -41,7 +41,7 @@ import { supabase } from '../supabase';
 
 // ... (previous imports)
 
-export default function SearchPoints({ isPremium: _isPremium }: { isPremium: boolean }) {
+export default function SearchPoints({ isPremium }: { isPremium: boolean }) {
     // ... (state definitions remain the same)
     const [activePoint, setActivePoint] = useState<number | null>(null);
     const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]);

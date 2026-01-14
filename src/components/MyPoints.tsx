@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Trash2, Edit2, ChevronRight, ChevronDown, Calendar, Navigation, Info, Car, Droplets, Fish } from 'lucide-react';
+import { MapPin, Trash2, ChevronRight, ChevronDown, Calendar, Navigation, Info, Car, Droplets, Fish } from 'lucide-react';
 import { supabase } from '../supabase';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
