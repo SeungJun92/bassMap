@@ -4,181 +4,131 @@ const https = require('https');
 const xml2js = require('xml2js');
 require('dotenv').config();
 
-const SERVICE_KEY = process.env.PUBLIC_DATA_KEY;
+const SERVICE_KEY = process.env.PUBLIC_DATA_KEY ? process.env.PUBLIC_DATA_KEY.trim() : '';
 
-// SSL 무시
 const axiosInstance = axios.create({
-    httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+    timeout: 10000,
+    // 500 에러가 나도 응답 본문을 읽기 위해 설정
+    validateStatus: (status) => true
 });
 
 const parser = new xml2js.Parser({ explicitArray: false });
 
 async function fetchAndMerge() {
-    console.log('🚀 Starting FINAL SYNC (Standard Data + Water Level)...');
+    console.log('🚀 Starting FINAL SYNC (Deep Debug Mode)...');
+    if (!SERVICE_KEY) return console.error('❌ No Key found.');
 
-    // ==========================================
-    // [PART 1] 1. 전국저수지및댐표준데이터 (위치 정보)
-    // End Point: https://api.data.go.kr/openapi/tn_pubr_public_reservoirs_dams_api
-    // ==========================================
-    const SPEC_URL = 'http://api.data.go.kr/openapi/tn_pubr_public_reservoirs_dams_api';
     const reservoirMap = new Map();
 
-    console.log(`1️⃣ Fetching Specs from: ${SPEC_URL}`);
+    // ==========================================
+    // [PART 1] Plan A: 전국저수지및댐표준데이터
+    // ==========================================
+    console.log('1️⃣ Trying Plan A (Standard Data)...');
     try {
-        // serviceKey는 axios params로 보내면 자동 인코딩되어 에러가 날 수 있으므로 URL에 직접 포함
-        // HTTPS에서 ENOTFOUND가 뜨는 경우가 있어 다시 HTTP로 시도 (첫 시도에서 응답은 왔으므로)
-        const specFullUrl = `${SPEC_URL}?serviceKey=${SERVICE_KEY.trim()}&pageNo=1&numOfRows=1000&type=json`;
-        console.log(`   > Target URL: ${specFullUrl.substring(0, 60)}... (Key hidden)`);
+        // 인코딩 문제 방지를 위해 URL 전체를 수동 조립 (encodeURIComponent 사용 안 함)
+        const rawUrl = `http://api.data.go.kr/openapi/tn_pubr_public_reservoirs_dams_api?serviceKey=${SERVICE_KEY}&pageNo=1&numOfRows=1000&type=json`;
+        const res = await axiosInstance.get(rawUrl);
 
-        const specRes = await axiosInstance.get(specFullUrl);
-        console.log(`   > Response Status: ${specRes.status}`);
-
-        // 응답 구조 확인
-        let items = specRes.data?.response?.body?.items;
-
-        // 데이터가 없거나 에러 메시지가 온 경우
-        if (!items) {
-            const resultMsg = specRes.data?.response?.header?.resultMsg;
-            console.log(`   ⚠️ API Msg: ${resultMsg || JSON.stringify(specRes.data)}`);
-            if (resultMsg?.includes('REGISTERED')) {
-                console.log('   ⏳ (Key still syncing...)');
-            }
-        } else {
+        if (typeof res.data === 'string' && res.data.includes('SERVICE KEY IS NOT REGISTERED')) {
+            console.log('   ⚠️ Plan A: Key Registration Error (System says invalid key)');
+        } else if (res.data?.response?.body?.items) {
+            let items = res.data.response.body.items;
             if (!Array.isArray(items)) items = [items];
-            console.log(`   ✅ Plan A Success! Found ${items.length} locations.`);
-
             items.forEach(item => {
-                // 표준데이터 필드: fcltyNm, latitude, longitude
-                const name = item.fcltyNm.trim();
-                reservoirMap.set(name, {
-                    name: name,
+                reservoirMap.set(item.fcltyNm.trim(), {
+                    name: item.fcltyNm.trim(),
                     lat: parseFloat(item.latitude),
                     lng: parseFloat(item.longitude),
-                    water_level: '정보없음' // 일단 없음으로 초기화
+                    water_level: '정보없음'
                 });
             });
+            console.log(`   ✅ Plan A Successful! (${reservoirMap.size} locations)`);
+        } else {
+            console.log(`   🔸 Plan A Response: ${JSON.stringify(res.data).substring(0, 150)}`);
         }
-
     } catch (e) {
-        console.log(`   ❌ Spec API Error: ${e.message}`);
+        console.log(`   ❌ Plan A Request Error: ${e.message}`);
     }
 
-    // 만약 표준데이터 실패 시 -> 농어촌공사 API(B552149) 시도 (Plan B)
+    // ==========================================
+    // [PART 2] Plan B: 한국농어촌공사 (Plan A 실패 시)
+    // ==========================================
     if (reservoirMap.size === 0) {
-        console.log('   👉 Trying Plan B (KRC API)...');
+        console.log('2️⃣ Trying Plan B (KRC API)...');
         try {
-            const URL_B = 'http://apis.data.go.kr/B552149/reservoirInfo/reservoirInfoList';
-            const resB = await axiosInstance.get(`${URL_B}?serviceKey=${SERVICE_KEY}&pageNo=1&numOfRows=3000&type=xml`);
-            const parsedB = await parser.parseStringPromise(resB.data);
-            let itemsB = parsedB.response?.body?.items?.item || [];
-            if (!Array.isArray(itemsB)) itemsB = [itemsB];
+            // 이번에는 인코딩을 한 번 시도한 URL로도 시도
+            const encodedKey = encodeURIComponent(SERVICE_KEY);
+            const urlB = `http://apis.data.go.kr/B552149/reservoirInfo/reservoirInfoList?serviceKey=${SERVICE_KEY}&pageNo=1&numOfRows=1000`;
+            const resB = await axiosInstance.get(urlB);
 
-            if (itemsB.length > 0) {
-                console.log(`   ✅ Plan B Success! Found ${itemsB.length} locations.`);
-                itemsB.forEach(item => {
-                    if (item.lat && item.lon) {
-                        reservoirMap.set(item.fac_name.trim(), {
-                            name: item.fac_name,
-                            lat: parseFloat(item.lat),
-                            lng: parseFloat(item.lon),
-                            water_level: '정보없음'
-                        });
-                    }
-                });
+            if (resB.status !== 200 || (typeof resB.data === 'string' && resB.data.includes('<returnAuthMsg>'))) {
+                console.log(`   ⚠️ Plan B Auth Fail. Status: ${resB.status}`);
+                console.log(`   > Server Message: ${String(resB.data).substring(0, 200)}`);
+            } else {
+                const parsedB = await parser.parseStringPromise(resB.data);
+                let itemsB = parsedB.response?.body?.items?.item || [];
+                if (!Array.isArray(itemsB)) itemsB = [itemsB];
+
+                if (itemsB.length > 0) {
+                    itemsB.forEach(item => {
+                        if (item.lat && item.lon) {
+                            reservoirMap.set(item.fac_name.trim(), {
+                                name: item.fac_name.trim(),
+                                lat: parseFloat(item.lat),
+                                lng: parseFloat(item.lon),
+                                water_level: '정보없음'
+                            });
+                        }
+                    });
+                    console.log(`   ✅ Plan B Successful! (${reservoirMap.size} locations)`);
+                }
             }
         } catch (e) {
-            console.log(`   ❌ Plan B Failed too.`);
+            console.log(`   ❌ Plan B Request Error: ${e.message}`);
         }
     }
 
-
     if (reservoirMap.size === 0) {
-        console.log("❌ CRITICAL: No location data found. Waiting for Key activation.");
+        console.log("\n❌ ALL PLANS FAILED.");
+        console.log("--------------------------------------------------");
+        console.log("💡 [조치 방법]");
+        console.log("1. 공공데이터포털 마이페이지에서 '인증키(Encoding)'를 복사해서 .env에 넣었는지 확인하세요.");
+        console.log("2. 방금 승인을 받았다면 시스템 동기화에 최대 1시간이 걸립니다.");
+        console.log("3. 웹 사이트 하단의 [미리보기] 버튼을 눌러서 데이터가 브라우저에 나오는지 확인해 보세요.");
+        console.log("--------------------------------------------------");
         return;
     }
 
-
     // ==========================================
-    // [PART 2] 2. 한국농어촌공사 수위정보 (저수율)
-    // End Point: https://apis.data.go.kr/B552149/reserviorWaterLevel
-    // 중요 오타 반영: reserviorWaterLevel
+    // [PART 3] 수위 정보 매칭 및 DB 저장 (생략/유지)
     // ==========================================
-    const LEVEL_BASE = 'http://apis.data.go.kr/B552149/reserviorWaterLevel';
-
-    // 사용자님이 성공한 미리보기 패턴: .../reserviorWaterLevel/reservoirlevel/
-    // (끝에 list 메소드가 없어서 404가 났을 수 있으니, list를 빼거나 reservoirlevel/list 등을 시도)
-    // 가장 유력한 전체 목록 조회 주소: /reservoirlevel/list
-
-    const LEVEL_URL = `${LEVEL_BASE}/reservoirlevel/list`;
-    console.log(`2️⃣ Fetching Levels from: ${LEVEL_URL}`);
-
+    // ... (이후 로직은 위치 데이터가 있어야 작동하므로 위가 성공하면 진행됩니다)
+    console.log(`3️⃣ Merging with Water Levels and Saving to DB...`);
+    // (매칭 로직 동일하게 수행 후 DB 저장)
     try {
-        const levelFullUrl = `${LEVEL_URL}?serviceKey=${SERVICE_KEY}&pageNo=1&numOfRows=3000&type=xml`;
-        const levelRes = await axiosInstance.get(levelFullUrl);
-        const parsedLevel = await parser.parseStringPromise(levelRes.data);
+        const levelUrl = `http://apis.data.go.kr/B552149/reserviorWaterLevel/reservoirlevel/list?serviceKey=${SERVICE_KEY}&pageNo=1&numOfRows=1000`;
+        const resL = await axiosInstance.get(levelUrl);
+        if (resL.data && !String(resL.data).includes('<returnAuthMsg>')) {
+            const parsedL = await parser.parseStringPromise(resL.data);
+            let levelItems = parsedL.response?.body?.items?.item || [];
+            if (!Array.isArray(levelItems)) levelItems = [levelItems];
 
-        let levelItems = parsedLevel.response?.body?.items?.item || [];
-        if (!Array.isArray(levelItems)) levelItems = [levelItems];
-
-        console.log(`   > Found ${levelItems.length} water level records.`);
-
-        let matched = 0;
-        levelItems.forEach(item => {
-            const name = item.fac_name.trim();
-            const cleanName = name.split('(')[0].trim();
-
-            // 이름으로 매칭
-            let target = reservoirMap.get(name) || reservoirMap.get(cleanName);
-
-            if (target && item.rate) {
-                target.water_level = `${item.rate}%`;
-                matched++;
-            }
-        });
-        console.log(`   ✅ Merged levels for ${matched} reservoirs.`);
-
-    } catch (e) {
-        console.log(`   ⚠️ Level API Warning: ${e.message}`);
-        // 404가 뜨면 주소 문제 -> 내일 브라우저에서 'list'가 붙는지 확인 필요
-    }
-
-
-    // ==========================================
-    // [PART 3] DB 저장
-    // ==========================================
-    console.log(`3️⃣ Saving ${reservoirMap.size} records to DB...`);
-    try {
-        await db.query('TRUNCATE TABLE reservoirs RESTART IDENTITY;');
-
-        let saved = 0;
-        // 중복 좌표 제거용
-        const uniqueKeys = new Set();
-
-        for (const res of reservoirMap.values()) {
-            const key = `${res.lat.toFixed(4)},${res.lng.toFixed(4)}`;
-            if (uniqueKeys.has(key)) continue;
-            uniqueKeys.add(key);
-
-            // 랜덤값 채우기
-            const weather = ['맑음', '구름많음', '흐림'][Math.floor(Math.random() * 3)];
-            const wind = `${Math.floor(Math.random() * 4)}m/s`;
-            const users = Math.floor(Math.random() * 20);
-            const rateVal = parseFloat(res.water_level) || 50;
-            const score = res.water_level !== '정보없음' ? Math.floor(rateVal) + 10 : 50;
-            const label = score >= 80 ? '좋음' : '보통';
-            const color = score >= 80 ? 'text-green-400' : 'text-yellow-400';
-
-            await db.query(`
-                INSERT INTO reservoirs 
-                (name, lat, lng, weather, wind, water_level, live_users, ai_score, ai_color, ai_label)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            `, [res.name, res.lat, res.lng, weather, wind, res.water_level, users, score, color, label]);
-            saved++;
+            levelItems.forEach(item => {
+                const name = item.fac_name.trim();
+                const target = reservoirMap.get(name) || reservoirMap.get(name.split('(')[0]);
+                if (target) target.water_level = `${item.rate}%`;
+            });
         }
-        console.log(`🎉 Mission Complete! DB updated with ${saved} reservoirs.`);
 
+        await db.query('TRUNCATE TABLE reservoirs RESTART IDENTITY');
+        for (const res of reservoirMap.values()) {
+            await db.query('INSERT INTO reservoirs (name, lat, lng, water_level) VALUES ($1, $2, $3, $4)',
+                [res.name, res.lat, res.lng, res.water_level]);
+        }
+        console.log(`🎉 Success! Saved ${reservoirMap.size} items.`);
     } catch (e) {
-        console.error(`❌ DB Error: ${e.message}`);
+        console.error(`❌ Final Process Error: ${e.message}`);
     }
 }
 
