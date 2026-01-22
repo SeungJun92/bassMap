@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Navigation, Map as MapIcon, Layers, Crosshair, Cloud, User, Fish, Wind, Droplets, Star, ChevronLeft } from 'lucide-react';
+import { Search, Navigation, Map as MapIcon, Cloud, User, Fish, Wind, Droplets, Star, ChevronLeft } from 'lucide-react';
 import KakaoMap from './KakaoMap';
 import { supabase } from '../supabase';
 
@@ -23,7 +23,7 @@ export default function SearchPoints() {
     const [searchQuery, setSearchQuery] = useState('');
     const [reservoirs, setReservoirs] = useState<Reservoir[]>([]);
     const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-    const [_isSearching, setIsSearching] = useState(false);
+    const [, setIsSearching] = useState(false);
     const [showResultsList, setShowResultsList] = useState(false);
 
     useEffect(() => {
