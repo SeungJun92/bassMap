@@ -3,17 +3,22 @@ import { Anchor, Crown } from 'lucide-react';
 import MyPoints from './components/MyPoints';
 import RegisterPoint from './components/RegisterPoint';
 import SearchPoints from './components/SearchPoints';
+import LandingPage from './components/LandingPage';
 
-type Tab = 'my-points' | 'register' | 'search';
+type Tab = 'my-points' | 'register' | 'search' | 'landing';
 
 function App() {
-    const [activeTab, setActiveTab] = useState<Tab>('search');
+    const [activeTab, setActiveTab] = useState<Tab>('landing');
     const [isPremium, setIsPremium] = useState(true);
+
+    if (activeTab === 'landing') {
+        return <LandingPage onGetStarted={() => setActiveTab('search')} />;
+    }
 
     const header = (
         <header className="flex-none z-50 glass-panel !rounded-none !border-x-0 !border-t-0 p-3 border-b border-white/20 bg-slate-800/80">
             <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('landing')}>
                     <Anchor className="text-sky-400" size={22} />
                     <h1 className="text-lg font-extrabold bg-gradient-to-r from-white to-sky-200 bg-clip-text text-transparent tracking-tight">
                         BassMap

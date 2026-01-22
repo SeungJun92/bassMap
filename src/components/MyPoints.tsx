@@ -1,17 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Trash2, ChevronRight, ChevronDown, Calendar, Navigation, Info, Car, Droplets, Fish } from 'lucide-react';
 import { supabase } from '../supabase';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-const DefaultIcon = L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+import KakaoMap from './KakaoMap';
 
 interface Point {
     id: number;
@@ -32,6 +22,33 @@ export default function MyPoints() {
     const [points, setPoints] = useState<Point[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedPointId, setExpandedPointId] = useState<number | null>(null);
+    const [navPoint, setNavPoint] = useState<Point | null>(null);
+
+    const handleNavigation = (type: 'tmap' | 'kakao' | 'naver') => {
+        if (!navPoint) return;
+
+        const { lat, lng, name } = navPoint;
+        let url = '';
+
+        switch (type) {
+            case 'tmap':
+                // T Map URL Scheme
+                url = `tmap://route?goalname=${encodeURIComponent(name)}&goalx=${lng}&goaly=${lat}`;
+                break;
+            case 'kakao':
+                // Kakao Map Web/App Link
+                url = `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
+                break;
+            case 'naver':
+                // Naver Map URL Scheme
+                url = `nmap://route/car?dlat=${lat}&dlng=${lng}&dname=${encodeURIComponent(name)}&appname=bassmap`;
+                // Fallback to web if needed implementation would be complex here, relying on scheme for now
+                break;
+        }
+
+        window.open(url, '_blank');
+        setNavPoint(null);
+    };
 
     const fetchPoints = async () => {
         try {
@@ -137,23 +154,28 @@ export default function MyPoints() {
                             {/* Expanded Content */}
                             {expandedPointId === point.id && (
                                 <div className="px-5 pb-5 animate-slide-up">
-                                    <div className="h-[200px] rounded-2xl overflow-hidden border border-white/5 mb-5 shadow-inner">
-                                        <MapContainer
-                                            center={[point.lat, point.lng]}
-                                            zoom={15}
-                                            zoomControl={false}
-                                            scrollWheelZoom={false}
-                                            dragging={false}
-                                            doubleClickZoom={false}
-                                            style={{ height: '100%', width: '100%' }}
-                                        >
-                                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                            <Marker position={[point.lat, point.lng]} />
-                                        </MapContainer>
+                                    <div className="h-[500px] rounded-2xl overflow-hidden border border-white/5 mb-5 shadow-inner">
+                                        <KakaoMap
+                                            center={{ lat: point.lat, lng: point.lng }}
+                                            level={3}
+                                            markers={[{ lat: point.lat, lng: point.lng }]}
+                                        />
                                     </div>
 
                                     {/* Detailed Info Grid */}
-                                    <div className="grid grid-cols-2 gap-3 mb-5">
+                                    <div className="grid grid-cols-2 gap-2 mb-4">
+                                        <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5 col-span-2">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
+                                                <MapPin size={12} className="text-purple-400" /> 주소
+                                            </div>
+                                            <div className="text-sm font-bold text-slate-200">{point.address || '-'}</div>
+                                        </div>
+                                        <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
+                                                <Info size={12} className="text-yellow-400" /> 입어료
+                                            </div>
+                                            <div className="text-sm font-bold text-slate-200">{point.cost || '-'}</div>
+                                        </div>
                                         <div className="bg-slate-900/40 p-3 rounded-2xl border border-white/5">
                                             <div className="flex items-center gap-2 text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">
                                                 <Droplets size={12} className="text-sky-400" /> 수위
@@ -191,13 +213,46 @@ export default function MyPoints() {
                                         </div>
                                     )}
 
-                                    <button className="w-full py-3 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-400 transition-all">
+                                    <button
+                                        onClick={() => setNavPoint(point)}
+                                        className="w-full py-3 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-400 transition-all">
                                         <Navigation size={14} fill="currentColor" /> 길찾기 시작
                                     </button>
                                 </div>
                             )}
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Navigation Selection Modal */}
+            {navPoint && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setNavPoint(null)}>
+                    <div className="bg-slate-900 w-full max-w-sm rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="text-center mb-6">
+                            <h3 className="text-xl font-black text-white">길찾기 앱 선택</h3>
+                            <p className="text-slate-400 text-xs mt-1">이동할 내비게이션 앱을 선택해주세요</p>
+                        </div>
+
+                        <button onClick={() => handleNavigation('tmap')} className="w-full py-4 bg-[#000] text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-800 transition-all border border-white/10">
+                            <span className="text-red-500 font-black">T</span>
+                            TMAP으로 안내
+                        </button>
+
+                        <button onClick={() => handleNavigation('kakao')} className="w-full py-4 bg-[#FEE500] text-[#191919] rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-[#FFE000] transition-all">
+                            <Navigation size={18} fill="currentColor" />
+                            카카오맵으로 안내
+                        </button>
+
+                        <button onClick={() => handleNavigation('naver')} className="w-full py-4 bg-[#2DB400] text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-[#2abe00] transition-all">
+                            <span className="font-black text-lg">N</span>
+                            네이버지도로 안내
+                        </button>
+
+                        <button onClick={() => setNavPoint(null)} className="w-full py-3 text-slate-500 font-bold text-sm mt-2">
+                            취소
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

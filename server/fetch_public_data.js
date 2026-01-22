@@ -35,13 +35,24 @@ async function fetchAndMerge() {
         } else if (res.data?.response?.body?.items) {
             let items = res.data.response.body.items;
             if (!Array.isArray(items)) items = [items];
+
+            // DEBUG: Log the first item structure
+            if (items.length > 0) {
+                console.log('   🔍 DEBUG: First Item Structure:', JSON.stringify(items[0], null, 2));
+            }
+
             items.forEach(item => {
-                reservoirMap.set(item.fcltyNm.trim(), {
-                    name: item.fcltyNm.trim(),
-                    lat: parseFloat(item.latitude),
-                    lng: parseFloat(item.longitude),
-                    water_level: '정보없음'
-                });
+                // Try multiple possible field names (Added fcltNm based on actual API response)
+                const name = item.fcltNm || item.fcltyNm || item.fclty_nm || item.fac_name || item.name;
+
+                if (name) {
+                    reservoirMap.set(name.trim(), {
+                        name: name.trim(),
+                        lat: parseFloat(item.latitude || item.lat || 0),
+                        lng: parseFloat(item.longitude || item.lng || item.lon || 0),
+                        water_level: '정보없음'
+                    });
+                }
             });
             console.log(`   ✅ Plan A Successful! (${reservoirMap.size} locations)`);
         } else {
@@ -49,6 +60,10 @@ async function fetchAndMerge() {
         }
     } catch (e) {
         console.log(`   ❌ Plan A Request Error: ${e.message}`);
+        if (e.response) {
+            console.log(`   > Status: ${e.response.status}`);
+            console.log(`   > Data: ${JSON.stringify(e.response.data).substring(0, 200)}`);
+        }
     }
 
     // ==========================================
@@ -106,10 +121,15 @@ async function fetchAndMerge() {
     // ... (이후 로직은 위치 데이터가 있어야 작동하므로 위가 성공하면 진행됩니다)
     console.log(`3️⃣ Merging with Water Levels and Saving to DB...`);
     // (매칭 로직 동일하게 수행 후 DB 저장)
+    console.log(`3️⃣ Merging with Water Levels and Saving to DB...`);
+
+    // [3-1] Try to fetch Water Level Data (Optional)
     try {
         const levelUrl = `http://apis.data.go.kr/B552149/reserviorWaterLevel/reservoirlevel/list?serviceKey=${SERVICE_KEY}&pageNo=1&numOfRows=1000`;
         const resL = await axiosInstance.get(levelUrl);
-        if (resL.data && !String(resL.data).includes('<returnAuthMsg>')) {
+
+        // Check if it looks like XML before parsing
+        if (resL.data && typeof resL.data === 'string' && resL.data.trim().startsWith('<')) {
             const parsedL = await parser.parseStringPromise(resL.data);
             let levelItems = parsedL.response?.body?.items?.item || [];
             if (!Array.isArray(levelItems)) levelItems = [levelItems];
@@ -119,16 +139,34 @@ async function fetchAndMerge() {
                 const target = reservoirMap.get(name) || reservoirMap.get(name.split('(')[0]);
                 if (target) target.water_level = `${item.rate}%`;
             });
+            console.log(`   💧 Water Level synced for matching locations.`);
+        } else {
+            console.log(`   ⚠️ Water Level API payload is not XML (Skipping levels). Sample: ${String(resL.data).substring(0, 50)}...`);
+        }
+    } catch (e) {
+        console.log(`   ⚠️ Water Level Fetch Failed (Skipping levels): ${e.message}`);
+    }
+
+    // [3-2] Always Save to DB
+    try {
+        if (reservoirMap.size === 0) {
+            console.log('   ⚠️ No data to save.');
+            return;
         }
 
         await db.query('TRUNCATE TABLE reservoirs RESTART IDENTITY');
+
+        let savedCount = 0;
         for (const res of reservoirMap.values()) {
+            // Ensure coordinates are valid (not 0,0) if you strictly want valid valid points, 
+            // but for now we save everything found in Plan A.
             await db.query('INSERT INTO reservoirs (name, lat, lng, water_level) VALUES ($1, $2, $3, $4)',
                 [res.name, res.lat, res.lng, res.water_level]);
+            savedCount++;
         }
-        console.log(`🎉 Success! Saved ${reservoirMap.size} items.`);
+        console.log(`🎉 Final Success! Saved ${savedCount} items to DB.`);
     } catch (e) {
-        console.error(`❌ Final Process Error: ${e.message}`);
+        console.error(`❌ DB Save Error: ${e.message}`);
     }
 }
 

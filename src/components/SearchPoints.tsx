@@ -1,27 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Navigation, Map as MapIcon, Layers, Crosshair, Cloud, User, Fish, Wind, Droplets, Star, ChevronLeft } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix Leaflet icon issue in React
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// Component to handle map flyTo and size refresh
-function MapUpdater({ center }: { center: [number, number] }) {
-    const map = useMap();
-    useEffect(() => {
-        map.invalidateSize();
-        map.flyTo(center, 13);
-    }, [center, map]);
-    return null;
-}
+import KakaoMap from './KakaoMap';
+import { supabase } from '../supabase';
 
 interface Reservoir {
     id: number;
@@ -37,14 +17,9 @@ interface Reservoir {
     aiLabel: string;
 }
 
-import { supabase } from '../supabase';
-
-// ... (previous imports)
-
 export default function SearchPoints() {
-    // ... (state definitions remain the same)
     const [activePoint, setActivePoint] = useState<number | null>(null);
-    const [mapCenter, setMapCenter] = useState<[number, number]>([36.5, 127.8]);
+    const [mapCenter, setMapCenter] = useState({ lat: 36.5, lng: 127.8 });
     const [searchQuery, setSearchQuery] = useState('');
     const [reservoirs, setReservoirs] = useState<Reservoir[]>([]);
     const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
@@ -60,7 +35,6 @@ export default function SearchPoints() {
             const { error } = await supabase.from('reservoirs').select('count', { count: 'exact', head: true });
             if (!error) {
                 setDbStatus('connected');
-                // Optional: Fetch initial data
                 fetchReservoirs();
             } else {
                 setDbStatus('disconnected');
@@ -103,7 +77,7 @@ export default function SearchPoints() {
 
         const data = await fetchReservoirs(searchQuery);
         if (data && data.length > 0) {
-            setMapCenter([data[0].lat, data[0].lng]);
+            setMapCenter({ lat: data[0].lat, lng: data[0].lng });
             if (data.length === 1) {
                 setActivePoint(data[0].id);
                 setShowResultsList(false);
@@ -118,27 +92,26 @@ export default function SearchPoints() {
 
     const resSelected = reservoirs.find(r => r.id === activePoint);
 
+    const mapMarkers = reservoirs.map(res => ({
+        lat: res.lat,
+        lng: res.lng,
+        title: res.name,
+        onClick: () => {
+            setMapCenter({ lat: res.lat, lng: res.lng });
+            setActivePoint(res.id);
+            setShowResultsList(false);
+        }
+    }));
+
     return (
         <div className="relative h-full w-full bg-slate-100 overflow-hidden font-sans">
             {/* Full Screen Map */}
             <div className="absolute inset-0 z-0">
-                <MapContainer center={mapCenter} zoom={7} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <MapUpdater center={mapCenter} />
-                    {reservoirs.map((res: Reservoir) => (
-                        <Marker
-                            key={res.id}
-                            position={[res.lat, res.lng]}
-                            eventHandlers={{
-                                click: () => {
-                                    setMapCenter([res.lat, res.lng]);
-                                    setActivePoint(res.id);
-                                    setShowResultsList(false);
-                                },
-                            }}
-                        />
-                    ))}
-                </MapContainer>
+                <KakaoMap
+                    center={mapCenter}
+                    level={8}
+                    markers={mapMarkers}
+                />
             </div>
 
             {/* Premium Header/Search Overlay */}
@@ -165,20 +138,7 @@ export default function SearchPoints() {
                     </div>
                 </div>
 
-                {/* Filter Chips Layer */}
-                <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 pointer-events-auto">
-                    {[
-                        { id: 'all', label: '전체', icon: <Layers size={14} /> },
-                        { id: 'hot', label: '인기 포인트', icon: <Star size={14} /> },
-                        { id: 'near', label: '내 주변', icon: <Navigation size={14} /> },
-                        { id: 'weather', label: '날씨 추천', icon: <Cloud size={14} /> }
-                    ].map(chip => (
-                        <button key={chip.id} className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 px-4 py-1.5 rounded-full text-xs font-bold text-slate-700 shadow-sm whitespace-nowrap hover:bg-slate-50 transition-all active:scale-95">
-                            {chip.icon}
-                            {chip.label}
-                        </button>
-                    ))}
-                </div>
+
 
                 {/* DB Status integrated subtly */}
                 <div className={`w-fit px-2 py-0.5 rounded-full border text-[9px] font-black tracking-widest uppercase pointer-events-auto shadow-sm ${dbStatus === 'connected' ? 'bg-green-500 text-white border-green-600' : 'bg-red-500 text-white border-red-600 animate-pulse'
@@ -187,27 +147,9 @@ export default function SearchPoints() {
                 </div>
             </div>
 
-            {/* Left Floating Weather Widget */}
-            <div className="absolute top-48 left-4 z-[500] animate-fade-in pointer-events-none">
-                <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl flex flex-col items-center gap-1 border border-white/50 pointer-events-auto">
-                    <Cloud className="text-sky-400" size={28} />
-                    <div className="text-sm font-black text-slate-800 leading-none">22°</div>
-                    <div className="text-[10px] font-bold text-slate-400">맑음</div>
-                </div>
-            </div>
 
-            {/* Right Multi-Layer Controls */}
-            <div className="absolute top-48 right-4 z-[500] flex flex-col gap-3">
-                <div className="flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-                    <button className="p-3 text-slate-600 hover:bg-slate-50 transition-colors"><Layers size={20} /></button>
-                    <button className="p-3 text-slate-600 hover:bg-slate-50 transition-colors"><Navigation size={20} /></button>
-                    <button className="p-3 text-slate-600 hover:bg-slate-50 transition-colors"><Crosshair size={20} /></button>
-                </div>
-                <div className="flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-                    <button className="p-3 text-slate-600 font-bold hover:bg-slate-50 transition-colors">+</button>
-                    <button className="p-3 text-slate-600 font-bold hover:bg-slate-50 transition-colors">-</button>
-                </div>
-            </div>
+
+
 
             {/* Results Sidebar (Optional Slide-in) */}
             {showResultsList && !activePoint && (
@@ -220,7 +162,7 @@ export default function SearchPoints() {
                         {reservoirs.map((res: Reservoir) => (
                             <div
                                 key={res.id}
-                                onClick={() => { setActivePoint(res.id); setMapCenter([res.lat, res.lng]); setShowResultsList(false); }}
+                                onClick={() => { setActivePoint(res.id); setMapCenter({ lat: res.lat, lng: res.lng }); setShowResultsList(false); }}
                                 className="bg-slate-50 hover:bg-sky-50 p-4 rounded-2xl border border-slate-200 hover:border-sky-200 transition-all cursor-pointer group"
                             >
                                 <div className="flex justify-between items-start mb-2">

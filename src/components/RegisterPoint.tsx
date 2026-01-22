@@ -1,57 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Search, Loader2 } from 'lucide-react';
 import { supabase } from '../supabase';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import KakaoMap from './KakaoMap';
 
-// Leaflet marker icon fix using CDN to avoid build errors
-const DefaultIcon = L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-function LocationMarker({ position, setPosition, setAddress }: { position: [number, number], setPosition: (pos: [number, number]) => void, setAddress: (addr: string) => void }) {
-    useMapEvents({
-        async click(e) {
-            const newPos: [number, number] = [e.latlng.lat, e.latlng.lng];
-            setPosition(newPos);
-
-            // Reverse Geocoding using OSM Nominatim
-            try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${e.latlng.lat}&lon=${e.latlng.lng}&addressdetails=1`);
-                const data = await response.json();
-                if (data && data.address) {
-                    const addr = data.address;
-                    // Format as: Province City/District Road/Village Number
-                    const parts = [
-                        addr.province || addr.city_district || '',
-                        addr.city || addr.municipality || '',
-                        addr.suburb || addr.borough || '',
-                        addr.road || addr.village || addr.neighbourhood || '',
-                        addr.house_number || ''
-                    ].filter(Boolean);
-
-                    const formattedAddr = parts.join(' ');
-                    setAddress(formattedAddr || data.display_name);
-                }
-            } catch (err) {
-                console.error('Failed to fetch address:', err);
-            }
-        },
-    });
-    return <Marker position={position} />;
-}
-
-function MapUpdater({ center }: { center: [number, number] }) {
-    const map = useMap();
-    useEffect(() => {
-        map.flyTo(center, 13);
-    }, [center, map]);
-    return null;
+declare global {
+    interface Window {
+        kakao: any;
+    }
 }
 
 export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
@@ -68,12 +23,13 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
         notes: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [mapPos, setMapPos] = useState<[number, number]>([37.5665, 126.9780]);
+    const [mapPos, setMapPos] = useState({ lat: 37.5665, lng: 126.9780 });
     const [searchKeyword, setSearchKeyword] = useState('');
     const [isSearching, setIsSearching] = useState(false);
+    const [showCoords, setShowCoords] = useState(false);
 
     useEffect(() => {
-        setFormData(prev => ({ ...prev, lat: mapPos[0], lng: mapPos[1] }));
+        setFormData(prev => ({ ...prev, lat: mapPos.lat, lng: mapPos.lng }));
     }, [mapPos]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -85,33 +41,62 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
         if (name === 'lat' || name === 'lng') {
             const val = parseFloat(value);
             if (!isNaN(val)) {
-                setMapPos(name === 'lat' ? [val, mapPos[1]] : [mapPos[0], val]);
+                setMapPos(name === 'lat' ? { lat: val, lng: mapPos.lng } : { lat: mapPos.lat, lng: val });
             }
         }
     };
 
-    const handleReservoirSearch = async () => {
+    const handleReservoirSearch = () => {
         if (!searchKeyword.trim()) return;
-        setIsSearching(true);
-        try {
-            const { data, error } = await supabase
-                .from('reservoirs')
-                .select('*')
-                .ilike('name', `%${searchKeyword}%`)
-                .limit(1);
+        if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+            alert('지도 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+            return;
+        }
 
-            if (error) throw error;
-            if (data && data.length > 0) {
-                const res = data[0];
-                setMapPos([parseFloat(res.lat), parseFloat(res.lng)]);
-                setFormData(prev => ({ ...prev, address: res.name }));
-            } else {
-                alert('해당 이름의 저수지를 찾을 수 없습니다.');
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
+        setIsSearching(true);
+
+        const places = new window.kakao.maps.services.Places();
+
+        places.keywordSearch(searchKeyword, (result: any, status: any) => {
             setIsSearching(false);
+
+            if (status === window.kakao.maps.services.Status.OK) {
+                if (result.length > 0) {
+                    const place = result[0];
+                    const lat = parseFloat(place.y);
+                    const lng = parseFloat(place.x);
+
+                    setMapPos({ lat, lng });
+
+                    // 주소 정보 업데이트 (도로명 주소 우선, 없으면 지번 주소)
+                    const fullAddr = place.road_address_name || place.address_name;
+                    setFormData(prev => ({
+                        ...prev,
+                        address: fullAddr,
+                        parking: fullAddr
+                    }));
+                }
+            } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+                alert('검색 결과가 존재하지 않습니다.');
+            } else {
+                alert('검색 중 오류가 발생했습니다.');
+            }
+        });
+    };
+
+    const handleMapClick = (lat: number, lng: number) => {
+        setMapPos({ lat, lng });
+
+        // Reverse geocoding with Kakao
+        if (window.kakao) {
+            const geocoder = new window.kakao.maps.services.Geocoder();
+            geocoder.coord2Address(lng, lat, (result: any, status: any) => {
+                if (status === window.kakao.maps.services.Status.OK && result[0]) {
+                    const addr = result[0].address;
+                    const fullAddr = `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${addr.address_name}`.trim();
+                    setFormData(prev => ({ ...prev, address: fullAddr, parking: fullAddr }));
+                }
+            });
         }
     };
 
@@ -159,7 +144,7 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
             <div className="glass-panel mb-4 p-2 flex gap-2 bg-slate-800/40 border-white/5 rounded-xl">
                 <input
                     type="text"
-                    placeholder="저수지명 검색으로 위치 찾기"
+                    placeholder="장소 검색 (예: 서울특별시청, 충주호)"
                     className="bg-transparent border-none outline-none text-white w-full p-2 text-sm"
                     value={searchKeyword}
                     onChange={(e) => setSearchKeyword(e.target.value)}
@@ -174,25 +159,14 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
                 </button>
             </div>
 
-            {/* Real Map */}
-            <div className="mb-6 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl z-0 h-[250px]">
-                <MapContainer
+            {/* Kakao Map */}
+            <div className="mb-6 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl z-0 h-[500px]">
+                <KakaoMap
                     center={mapPos}
-                    zoom={13}
-                    scrollWheelZoom={false}
-                    style={{ height: '100%', width: '100%' }}
-                >
-                    <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    />
-                    <MapUpdater center={mapPos} />
-                    <LocationMarker
-                        position={mapPos}
-                        setPosition={setMapPos}
-                        setAddress={(addr) => setFormData(prev => ({ ...prev, address: addr }))}
-                    />
-                </MapContainer>
+                    level={3}
+                    markers={[{ lat: mapPos.lat, lng: mapPos.lng }]}
+                    onMapClick={handleMapClick}
+                />
                 <div className="p-2 bg-slate-800/80 text-[10px] text-center text-slate-400 border-t border-slate-700">
                     지도를 클릭하여 핀의 위치를 지정할 수 있습니다.
                 </div>
@@ -200,48 +174,61 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
 
             {/* Basic Info */}
             <div className="flex flex-col gap-4 mb-6">
-                <h3 className="text-xs uppercase tracking-widest text-slate-500 font-bold">기본 정보 (Basic)</h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xs uppercase tracking-widest text-slate-500 font-bold">기본 정보 (Basic)</h3>
+                    <button
+                        onClick={() => setShowCoords(!showCoords)}
+                        className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors underline"
+                    >
+                        {showCoords ? '좌표 숨기기' : '좌표 보기'}
+                    </button>
+                </div>
+
                 <input
                     name="name"
                     placeholder="포인트 이름 (Point Name)"
-                    className="glass-panel w-full text-white p-3 bg-slate-800/40 border-slate-700/50 focus:border-sky-500/50 transition-all outline-none rounded-xl"
+                    className="glass-panel w-full text-white p-3 bg-slate-800/40 border-slate-700/50 focus:border-sky-500/50 transition-all outline-none rounded-xl font-bold"
                     value={formData.name}
                     onChange={handleChange}
                 />
                 <div className="relative group">
-                    <input
+                    <textarea
                         name="address"
-                        placeholder="주소 (Address)"
-                        className="glass-panel w-full text-white p-3 pr-12 bg-slate-800/40 border-slate-700/50 focus:border-sky-500/50 transition-all outline-none rounded-xl"
+                        placeholder="지도를 클릭하여 주소를 가져오세요"
+                        rows={2}
+                        className="glass-panel w-full text-white p-3 pr-12 bg-slate-800/40 border-slate-700/50 focus:border-sky-500/50 transition-all outline-none rounded-xl text-sm leading-relaxed"
                         value={formData.address}
                         onChange={handleChange}
                     />
-                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
+                    <Search className="absolute right-4 top-4 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] text-slate-500 ml-1">위도 (Lat)</label>
-                        <input
-                            name="lat"
-                            type="number"
-                            step="0.000001"
-                            className="glass-panel w-full text-white p-2.5 bg-slate-800/40 border-slate-700/50 outline-none rounded-xl text-sm"
-                            value={formData.lat}
-                            onChange={handleChange}
-                        />
+
+                {showCoords && (
+                    <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-500 ml-1">위도 (Lat)</label>
+                            <input
+                                name="lat"
+                                type="number"
+                                step="0.000001"
+                                className="glass-panel w-full text-white p-2.5 bg-slate-800/40 border-slate-700/50 outline-none rounded-xl text-sm"
+                                value={formData.lat}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-500 ml-1">경도 (Lng)</label>
+                            <input
+                                name="lng"
+                                type="number"
+                                step="0.000001"
+                                className="glass-panel w-full text-white p-2.5 bg-slate-800/40 border-slate-700/50 outline-none rounded-xl text-sm"
+                                value={formData.lng}
+                                onChange={handleChange}
+                            />
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] text-slate-500 ml-1">경도 (Lng)</label>
-                        <input
-                            name="lng"
-                            type="number"
-                            step="0.000001"
-                            className="glass-panel w-full text-white p-2.5 bg-slate-800/40 border-slate-700/50 outline-none rounded-xl text-sm"
-                            value={formData.lng}
-                            onChange={handleChange}
-                        />
-                    </div>
-                </div>
+                )}
                 <input
                     name="cost"
                     placeholder="입어료 (Admission Fee)"
