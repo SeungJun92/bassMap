@@ -1,3 +1,4 @@
+// Trigger deployment
 import { useState } from 'react';
 import { Anchor, Crown } from 'lucide-react';
 import MyPoints from './components/MyPoints';
