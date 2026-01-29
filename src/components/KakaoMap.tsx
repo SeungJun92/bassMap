@@ -22,10 +22,8 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
     const [isLoaded, setIsLoaded] = useState(false);
     const [isMapReady, setIsMapReady] = useState(false);
 
-    // Keep centerRef updated with latest center prop
-    useEffect(() => {
-        centerRef.current = center;
-    }, [center]);
+    // Sync centerRef immediately during render to avoid stale values in event handlers
+    centerRef.current = center;
 
     // Wait for Kakao SDK to load
     useEffect(() => {
@@ -71,11 +69,12 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
         });
 
         const handleResize = () => {
-            if (mapRef.current) {
+            if (mapRef.current && window.kakao) {
+                // Better approach: Get CURRENT center of the map before resizing
+                // to stay where the user is currently looking
+                const currentCenter = mapRef.current.getCenter();
                 mapRef.current.relayout();
-                const latestCenter = centerRef.current;
-                const moveLatLon = new kakao.maps.LatLng(latestCenter.lat, latestCenter.lng);
-                mapRef.current.setCenter(moveLatLon);
+                mapRef.current.setCenter(currentCenter);
             }
         };
 
@@ -86,7 +85,7 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
         };
     }, [isLoaded]);
 
-    // Update center when it changes
+    // Update center when it changes explicitly from props (e.g. search result)
     useEffect(() => {
         if (mapRef.current && window.kakao && isMapReady) {
             const { kakao } = window;
