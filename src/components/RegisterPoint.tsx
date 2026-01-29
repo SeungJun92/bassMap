@@ -92,8 +92,7 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
             const geocoder = new window.kakao.maps.services.Geocoder();
             geocoder.coord2Address(lng, lat, (result: any, status: any) => {
                 if (status === window.kakao.maps.services.Status.OK && result[0]) {
-                    const addr = result[0].address;
-                    const fullAddr = `${addr.region_1depth_name} ${addr.region_2depth_name} ${addr.region_3depth_name} ${addr.address_name}`.trim();
+                    const fullAddr = result[0].address.address_name;
                     setFormData(prev => ({ ...prev, address: fullAddr, parking: fullAddr }));
                 }
             });
