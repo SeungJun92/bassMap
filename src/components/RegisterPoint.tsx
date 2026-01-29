@@ -92,7 +92,11 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
             const geocoder = new window.kakao.maps.services.Geocoder();
             geocoder.coord2Address(lng, lat, (result: any, status: any) => {
                 if (status === window.kakao.maps.services.Status.OK && result[0]) {
-                    const fullAddr = result[0].address.address_name;
+                    // Use road address if available, otherwise fallback to bunk-address
+                    const fullAddr = result[0].road_address
+                        ? result[0].road_address.address_name
+                        : result[0].address.address_name;
+
                     setFormData(prev => ({ ...prev, address: fullAddr, parking: fullAddr }));
                 }
             });
@@ -252,14 +256,14 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
 
                 <div className={`space-y-4 p-4 rounded-2xl bg-slate-800/20 border border-white/5 ${!isPremium ? 'opacity-40 pointer-events-none grayscale' : ''}`}>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 col-span-2 sm:col-span-1">
                             <label className="text-[10px] font-bold text-slate-500 ml-1">수위 (Water Level)</label>
                             <input name="water_level" value={formData.water_level} onChange={handleChange} placeholder="75%" className="glass-panel w-full text-white p-2.5 bg-slate-900/50 border-white/5 outline-none rounded-xl text-sm" />
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 ml-1">주차 (Parking)</label>
-                            <input name="parking" value={formData.parking} onChange={handleChange} placeholder="가능" className="glass-panel w-full text-white p-2.5 bg-slate-900/50 border-white/5 outline-none rounded-xl text-sm" />
-                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 ml-1">주차 (Parking)</label>
+                        <input name="parking" value={formData.parking} onChange={handleChange} placeholder="주차 가능 여부 및 위치..." className="glass-panel w-full text-white p-2.5 bg-slate-900/50 border-white/5 outline-none rounded-xl text-sm" />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 ml-1">추천 채비 (Recommended Rig)</label>
