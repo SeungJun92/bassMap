@@ -154,7 +154,7 @@ export default function MyPoints() {
                             {/* Expanded Content */}
                             {expandedPointId === point.id && (
                                 <div className="px-5 pb-5 animate-slide-up">
-                                    <div className="h-[500px] rounded-2xl overflow-hidden border border-white/5 mb-5 shadow-inner">
+                                    <div className="h-[340px] rounded-2xl overflow-hidden border border-white/5 mb-5 shadow-inner">
                                         <KakaoMap
                                             center={{ lat: point.lat, lng: point.lng }}
                                             level={3}

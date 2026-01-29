@@ -160,7 +160,7 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
             </div>
 
             {/* Kakao Map */}
-            <div className="mb-6 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl z-0 h-[500px]">
+            <div className="mb-6 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl z-0 h-[340px]">
                 <KakaoMap
                     center={mapPos}
                     level={3}
