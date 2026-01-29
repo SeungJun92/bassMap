@@ -3,17 +3,17 @@ import { useState } from 'react';
 import { Anchor, Crown } from 'lucide-react';
 import MyPoints from './components/MyPoints';
 import RegisterPoint from './components/RegisterPoint';
-import SearchPoints from './components/SearchPoints';
+import WaterLevel from './components/WaterLevel';
 import LandingPage from './components/LandingPage';
 
-type Tab = 'my-points' | 'register' | 'search' | 'landing';
+type Tab = 'my-points' | 'register' | 'water-level' | 'landing';
 
 function App() {
     const [activeTab, setActiveTab] = useState<Tab>('landing');
     const [isPremium, setIsPremium] = useState(true);
 
     if (activeTab === 'landing') {
-        return <LandingPage onGetStarted={() => setActiveTab('search')} />;
+        return <LandingPage onGetStarted={() => setActiveTab('water-level')} />;
     }
 
     const header = (
@@ -57,13 +57,13 @@ function App() {
                     포인트 등록
                 </button>
                 <button
-                    onClick={() => setActiveTab('search')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'search'
+                    onClick={() => setActiveTab('water-level')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'water-level'
                         ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                         }`}
                 >
-                    검색
+                    수위 정보
                 </button>
             </nav>
         </header>
@@ -83,21 +83,14 @@ function App() {
                         <RegisterPoint isPremium={isPremium} />
                     </div>
                 )}
-                {activeTab === 'search' && (
-                    <div className="absolute inset-0">
-                        <SearchPoints />
-                        {/* Floating back button to return to categories/menu if needed */}
-                        <button
-                            onClick={() => setActiveTab('my-points')}
-                            className="absolute top-24 left-4 z-[600] bg-white/90 backdrop-blur-md p-2 rounded-full shadow-lg border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
-                        >
-                            <Anchor size={20} />
-                        </button>
+                {activeTab === 'water-level' && (
+                    <div className="h-full overflow-y-auto">
+                        <WaterLevel />
                     </div>
                 )}
             </main>
 
-            {activeTab !== 'search' && (
+            {activeTab !== 'water-level' && (
                 <footer className="footer-content p-4 text-center text-xs text-slate-600 flex-none">
                     <p>&copy; 2024 BassMap. {isPremium ? 'Premium Features Unlocked' : 'Upgrade for AI Analysis'}</p>
                 </footer>
