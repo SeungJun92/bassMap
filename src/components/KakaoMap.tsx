@@ -18,8 +18,14 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const centerRef = useRef(center);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isMapReady, setIsMapReady] = useState(false);
+
+    // Keep centerRef updated with latest center prop
+    useEffect(() => {
+        centerRef.current = center;
+    }, [center]);
 
     // Wait for Kakao SDK to load
     useEffect(() => {
@@ -42,7 +48,7 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
             if (!mapContainer.current) return;
 
             const options = {
-                center: new kakao.maps.LatLng(center.lat, center.lng),
+                center: new kakao.maps.LatLng(centerRef.current.lat, centerRef.current.lng),
                 level: level
             };
 
@@ -67,7 +73,8 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
         const handleResize = () => {
             if (mapRef.current) {
                 mapRef.current.relayout();
-                const moveLatLon = new kakao.maps.LatLng(center.lat, center.lng);
+                const latestCenter = centerRef.current;
+                const moveLatLon = new kakao.maps.LatLng(latestCenter.lat, latestCenter.lng);
                 mapRef.current.setCenter(moveLatLon);
             }
         };
@@ -81,16 +88,16 @@ export default function KakaoMap({ center, level = 8, style, markers = [], onMap
 
     // Update center when it changes
     useEffect(() => {
-        if (mapRef.current && window.kakao) {
+        if (mapRef.current && window.kakao && isMapReady) {
             const { kakao } = window;
             const moveLatLon = new kakao.maps.LatLng(center.lat, center.lng);
             mapRef.current.panTo(moveLatLon);
         }
-    }, [center.lat, center.lng]);
+    }, [center.lat, center.lng, isMapReady]);
 
     // Update markers
     useEffect(() => {
-        if (!mapRef.current || !window.kakao) return;
+        if (!mapRef.current || !window.kakao || !isMapReady) return;
 
         const { kakao } = window;
 
