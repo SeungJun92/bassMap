@@ -1,11 +1,27 @@
 import React from 'react';
-import { Anchor, Map, Navigation, Shield, Zap, ChevronRight } from 'lucide-react';
+import { Anchor, Map, Navigation, Shield, Zap, ChevronRight, LogIn, LogOut, User } from 'lucide-react';
+import { supabase } from '../supabase';
+import { Session } from '@supabase/supabase-js';
 
 interface LandingPageProps {
     onGetStarted: () => void;
+    session: Session | null;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session }) => {
+    const handleGoogleLogin = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin,
+            }
+        });
+        if (error) console.error('Error logging in:', error.message);
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+    };
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 selection:bg-sky-500/30 overflow-x-hidden">
             {/* Navigation */}
@@ -20,9 +36,41 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         </span>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-10 text-sm font-semibold text-slate-400">
-                        <a href="#features" className="hover:text-white transition-colors">주요 기능</a>
-                        <a href="#stats" className="hover:text-white transition-colors">통계</a>
+                    <div className="flex items-center gap-4">
+                        <div className="hidden md:flex items-center gap-10 text-sm font-semibold text-slate-400 mr-6">
+                            <a href="#features" className="hover:text-white transition-colors">주요 기능</a>
+                            <a href="#stats" className="hover:text-white transition-colors">통계</a>
+                        </div>
+
+                        {session ? (
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-white/10">
+                                    <div className="w-6 h-6 rounded-full overflow-hidden bg-sky-500 flex items-center justify-center">
+                                        {session.user.user_metadata.avatar_url ? (
+                                            <img src={session.user.user_metadata.avatar_url} alt="User" />
+                                        ) : (
+                                            <User size={14} className="text-white" />
+                                        )}
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-200">{session.user.user_metadata.full_name || session.user.email}</span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="p-2 text-slate-400 hover:text-white transition-colors"
+                                    title="로그아웃"
+                                >
+                                    <LogOut size={20} />
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={handleGoogleLogin}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95 shadow-lg shadow-white/10"
+                            >
+                                <LogIn size={18} />
+                                구글 로그인
+                            </button>
+                        )}
                     </div>
 
 

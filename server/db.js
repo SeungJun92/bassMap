@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // 개별 변수 방식을 사용하면 '!!' 같은 특수문자가 있어도 인코딩할 필요가 없어 안전합니다.
 const pool = new Pool({

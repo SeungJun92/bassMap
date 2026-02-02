@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://hbhlpypcrlafbmgzaptq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhiaGxweXBjcmxhZmJtZ3phcHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyMTcxMTUsImV4cCI6MjA4Mzc5MzExNX0.ngg4EG7rBpVE21AcArejlM5jNUU3BOQiRtjVzPwDBa8';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hbhlpypcrlafbmgzaptq.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable__3Ss_btyx8XgGp2kBzr5dA_ZOl2lB-Z';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+    }
+});

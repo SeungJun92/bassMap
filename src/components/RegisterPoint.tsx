@@ -110,9 +110,15 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
         }
         setIsSubmitting(true);
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert('로그인이 필요합니다.');
+                return;
+            }
+
             const { error } = await supabase
                 .from('personal_points')
-                .insert([formData]);
+                .insert([{ ...formData, user_id: user.id }]);
 
             if (error) throw error;
 

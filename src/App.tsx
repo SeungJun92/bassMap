@@ -1,19 +1,35 @@
-// Trigger deployment
-import { useState } from 'react';
 import { Anchor, Crown } from 'lucide-react';
 import MyPoints from './components/MyPoints';
 import RegisterPoint from './components/RegisterPoint';
 import WaterLevel from './components/WaterLevel';
 import LandingPage from './components/LandingPage';
+import { useEffect, useState } from 'react';
+import { supabase } from './supabase';
+import { Session } from '@supabase/supabase-js';
 
 type Tab = 'my-points' | 'register' | 'water-level' | 'landing';
 
 function App() {
     const [activeTab, setActiveTab] = useState<Tab>('landing');
     const [isPremium, setIsPremium] = useState(true);
+    const [session, setSession] = useState<Session | null>(null);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+        });
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
 
     if (activeTab === 'landing') {
-        return <LandingPage onGetStarted={() => setActiveTab('water-level')} />;
+        return <LandingPage onGetStarted={() => setActiveTab('water-level')} session={session} />;
     }
 
     const header = (
@@ -73,20 +89,41 @@ function App() {
         <div className="w-full h-full flex flex-col overflow-hidden bg-slate-900">
             {header}
             <main className="flex-1 relative overflow-hidden">
-                {activeTab === 'my-points' && (
-                    <div className="h-full overflow-y-auto">
-                        <MyPoints />
+                {(activeTab === 'my-points' || activeTab === 'register') && !session ? (
+                    <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900 animate-fade-in">
+                        <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6 border border-white/5 shadow-2xl">
+                            <Anchor className="text-sky-500" size={40} />
+                        </div>
+                        <h2 className="text-2xl font-black text-white mb-2 tracking-tight">로그인이 필요합니다</h2>
+                        <p className="text-slate-400 mb-8 max-w-xs text-sm leading-relaxed">
+                            나만의 낚시 포인트를 안전하게 관리하려면 <br />
+                            구글 계정으로 로그인해주세요.
+                        </p>
+                        <button
+                            onClick={() => setActiveTab('landing')}
+                            className="px-8 py-3 bg-sky-500 text-white rounded-xl font-bold text-sm hover:bg-sky-400 transition-all active:scale-95"
+                        >
+                            로그인하러 가기
+                        </button>
                     </div>
-                )}
-                {activeTab === 'register' && (
-                    <div className="h-full overflow-y-auto">
-                        <RegisterPoint isPremium={isPremium} />
-                    </div>
-                )}
-                {activeTab === 'water-level' && (
-                    <div className="h-full overflow-y-auto">
-                        <WaterLevel />
-                    </div>
+                ) : (
+                    <>
+                        {activeTab === 'my-points' && (
+                            <div className="h-full overflow-y-auto">
+                                <MyPoints />
+                            </div>
+                        )}
+                        {activeTab === 'register' && (
+                            <div className="h-full overflow-y-auto">
+                                <RegisterPoint isPremium={isPremium} />
+                            </div>
+                        )}
+                        {activeTab === 'water-level' && (
+                            <div className="h-full overflow-y-auto">
+                                <WaterLevel />
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
 

@@ -9,6 +9,29 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+const authenticate = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (error || !user) {
+            throw error || new Error('User not found');
+        }
+        req.user = user;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
 const MOCK_RESERVOIRS = [
     { id: 1, name: '충주호 (제일钓)', lat: 37.0055, lng: 128.0261, weather: '흐림', wind: '2m/s', waterLevel: '72%', liveUsers: 12, aiScore: 92, aiColor: 'text-green-400', aiLabel: '매우 좋음' },
     { id: 2, name: '안동호 (주진교)', lat: 36.6366, lng: 128.8465, weather: '비', wind: '5m/s', waterLevel: '65%', liveUsers: 3, aiScore: 45, aiColor: 'text-red-400', aiLabel: '나쁨' },
@@ -58,10 +81,10 @@ app.get('/api/reservoirs', async (req, res) => {
     }
 });
 
-// Get personal points
-app.get('/api/points', async (req, res) => {
+// Get personal points (filtered by user_id)
+app.get('/api/points', authenticate, async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM personal_points ORDER BY created_at DESC');
+        const result = await db.query('SELECT * FROM personal_points WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -69,15 +92,15 @@ app.get('/api/points', async (req, res) => {
     }
 });
 
-// Add personal point
-app.post('/api/points', async (req, res) => {
+// Add personal point (with user_id)
+app.post('/api/points', authenticate, async (req, res) => {
     const { name, address, lat, lng, cost, water_level, parking, rig, action, notes } = req.body;
     try {
         const result = await db.query(
             `INSERT INTO personal_points 
-            (name, address, lat, lng, cost, water_level, parking, rig, action, notes) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-            [name, address, lat, lng, cost, water_level, parking, rig, action, notes]
+            (name, address, lat, lng, cost, water_level, parking, rig, action, notes, user_id) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+            [name, address, lat, lng, cost, water_level, parking, rig, action, notes, req.user.id]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -86,18 +109,18 @@ app.post('/api/points', async (req, res) => {
     }
 });
 
-// Update personal point
-app.put('/api/points/:id', async (req, res) => {
+// Update personal point (filtered by user_id)
+app.put('/api/points/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const { name, address, lat, lng, cost, water_level, parking, rig, action, notes } = req.body;
     try {
         const result = await db.query(
             `UPDATE personal_points SET 
             name=$1, address=$2, lat=$3, lng=$4, cost=$5, water_level=$6, parking=$7, rig=$8, action=$9, notes=$10 
-            WHERE id=$11 RETURNING *`,
-            [name, address, lat, lng, cost, water_level, parking, rig, action, notes, id]
+            WHERE id=$11 AND user_id=$12 RETURNING *`,
+            [name, address, lat, lng, cost, water_level, parking, rig, action, notes, id, req.user.id]
         );
-        if (result.rowCount === 0) return res.status(404).json({ error: 'Point not found' });
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Point not found or unauthorized' });
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
@@ -105,12 +128,12 @@ app.put('/api/points/:id', async (req, res) => {
     }
 });
 
-// Delete personal point
-app.delete('/api/points/:id', async (req, res) => {
+// Delete personal point (filtered by user_id)
+app.delete('/api/points/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await db.query('DELETE FROM personal_points WHERE id=$1', [id]);
-        if (result.rowCount === 0) return res.status(404).json({ error: 'Point not found' });
+        const result = await db.query('DELETE FROM personal_points WHERE id=$1 AND user_id=$2', [id, req.user.id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Point not found or unauthorized' });
         res.json({ message: 'Deleted successfully' });
     } catch (err) {
         console.error(err);
