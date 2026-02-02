@@ -104,10 +104,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session }) => {
 
                             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
                                 <button
-                                    onClick={onGetStarted}
+                                    onClick={session ? onGetStarted : handleGoogleLogin}
                                     className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-emerald-500 text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-sky-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group"
                                 >
-                                    지금 시작하기
+                                    {session ? '지금 시작하기' : '구글로 시작하기'}
                                     <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </div>
