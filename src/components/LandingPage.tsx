@@ -13,7 +13,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session }) => {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin,
+                // Ensure we redirect back to the GitHub Pages subdirectory
+                redirectTo: window.location.origin + '/bassMap/',
             }
         });
         if (error) console.error('Error logging in:', error.message);
