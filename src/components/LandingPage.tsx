@@ -6,9 +6,10 @@ import { Session } from '@supabase/supabase-js';
 interface LandingPageProps {
     onGetStarted: () => void;
     session: Session | null;
+    hasNewMessage?: boolean;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session, hasNewMessage }) => {
     const handleGoogleLogin = async () => {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
@@ -66,10 +67,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session }) => {
                         ) : (
                             <button
                                 onClick={handleGoogleLogin}
-                                className="flex items-center gap-2 px-6 py-2.5 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95 shadow-lg shadow-white/10"
+                                className="flex items-center gap-2 px-6 py-2.5 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all active:scale-95 shadow-lg shadow-white/10 relative"
                             >
                                 <LogIn size={18} />
                                 구글 로그인
+                                {hasNewMessage && (
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse" />
+                                )}
                             </button>
                         )}
                     </div>
@@ -106,10 +110,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, session }) => {
                             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
                                 <button
                                     onClick={session ? onGetStarted : handleGoogleLogin}
-                                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-emerald-500 text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-sky-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group"
+                                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-emerald-500 text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-sky-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group relative"
                                 >
                                     {session ? '지금 시작하기' : '구글로 시작하기'}
                                     <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                    {hasNewMessage && (
+                                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse shadow-lg shadow-red-500/50" />
+                                    )}
                                 </button>
                             </div>
                         </div>

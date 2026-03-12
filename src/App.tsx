@@ -27,6 +27,26 @@ function App() {
             setSession(session);
         });
 
+        // Check if there are unread messages since last visit
+        const checkUnreadMessages = async () => {
+            const lastRead = localStorage.getItem('lastChatReadTime');
+            if (!lastRead) {
+                setHasNewMessage(true);
+                return;
+            }
+
+            const { count, error } = await supabase
+                .from('chat_messages')
+                .select('*', { count: 'exact', head: true })
+                .gt('created_at', lastRead);
+
+            if (!error && count && count > 0) {
+                setHasNewMessage(true);
+            }
+        };
+
+        checkUnreadMessages();
+
         // Listen for new chat messages for notification badge
         const chatChannel = supabase
             .channel('chat-notifications')
@@ -34,7 +54,7 @@ function App() {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'chat_messages' },
                 () => {
-                    if (activeTab !== 'chat') {
+                    if (window.location.hash !== '#chat' && activeTab !== 'chat') {
                         setHasNewMessage(true);
                     }
                 }
@@ -45,16 +65,17 @@ function App() {
             subscription.unsubscribe();
             supabase.removeChannel(chatChannel);
         };
-    }, [activeTab]);
+    }, []); // Run only on mount
 
     useEffect(() => {
         if (activeTab === 'chat') {
             setHasNewMessage(false);
+            localStorage.setItem('lastChatReadTime', new Date().toISOString());
         }
     }, [activeTab]);
 
     if (activeTab === 'landing') {
-        return <LandingPage onGetStarted={() => setActiveTab('water-level')} session={session} />;
+        return <LandingPage onGetStarted={() => setActiveTab('water-level')} session={session} hasNewMessage={hasNewMessage} />;
     }
 
     const header = (
