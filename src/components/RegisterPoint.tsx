@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Search, Loader2 } from 'lucide-react';
+import { Star, Search, Loader2, Navigation } from 'lucide-react';
 import { supabase } from '../supabase';
 import KakaoMap from './KakaoMap';
 
@@ -27,6 +27,47 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [showCoords, setShowCoords] = useState(false);
+    const [isLocating, setIsLocating] = useState(false);
+
+    useEffect(() => {
+        handleCurrentLocation();
+    }, []);
+
+    const handleCurrentLocation = () => {
+        if (!("geolocation" in navigator)) {
+            alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+            return;
+        }
+
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                setMapPos({ lat: latitude, lng: longitude });
+
+                // Reverse geocoding to get address
+                if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                    const geocoder = new window.kakao.maps.services.Geocoder();
+                    geocoder.coord2Address(longitude, latitude, (result: any, status: any) => {
+                        if (status === window.kakao.maps.services.Status.OK && result[0]) {
+                            const fullAddr = result[0].road_address
+                                ? result[0].road_address.address_name
+                                : result[0].address.address_name;
+                            setFormData(prev => ({ ...prev, address: fullAddr, parking: fullAddr }));
+                        }
+                        setIsLocating(false);
+                    });
+                } else {
+                    setIsLocating(false);
+                }
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+                setIsLocating(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
 
     useEffect(() => {
         setFormData(prev => ({ ...prev, lat: mapPos.lat, lng: mapPos.lng }));
@@ -165,6 +206,14 @@ export default function RegisterPoint({ isPremium }: { isPremium: boolean }) {
                     className="btn-primary rounded-lg px-4 py-1.5 flex items-center justify-center min-w-[80px]"
                 >
                     {isSearching ? <Loader2 className="animate-spin" size={16} /> : 'Search'}
+                </button>
+                <button
+                    onClick={handleCurrentLocation}
+                    disabled={isLocating}
+                    className="glass-panel rounded-lg px-3 py-1.5 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 transition-colors border-white/10"
+                    title="현재 위치로 설정"
+                >
+                    {isLocating ? <Loader2 className="animate-spin" size={16} /> : <Navigation size={16} className={isLocating ? 'text-sky-400' : 'text-slate-300'} />}
                 </button>
             </div>
 
