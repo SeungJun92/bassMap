@@ -14,6 +14,7 @@ function App() {
     const [activeTab, setActiveTab] = useState<Tab>('landing');
     const [isPremium, setIsPremium] = useState(true);
     const [session, setSession] = useState<Session | null>(null);
+    const [hasNewMessage, setHasNewMessage] = useState(false);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,8 +27,31 @@ function App() {
             setSession(session);
         });
 
-        return () => subscription.unsubscribe();
-    }, []);
+        // Listen for new chat messages for notification badge
+        const chatChannel = supabase
+            .channel('chat-notifications')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+                () => {
+                    if (activeTab !== 'chat') {
+                        setHasNewMessage(true);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            subscription.unsubscribe();
+            supabase.removeChannel(chatChannel);
+        };
+    }, [activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'chat') {
+            setHasNewMessage(false);
+        }
+    }, [activeTab]);
 
     if (activeTab === 'landing') {
         return <LandingPage onGetStarted={() => setActiveTab('water-level')} session={session} />;
@@ -54,7 +78,7 @@ function App() {
                 </button>
             </div>
 
-            <nav className="flex gap-1.5 p-1 bg-slate-700/40 rounded-xl border border-white/5 overflow-x-auto scrollbar-hide">
+            <nav className="flex gap-1.5 p-1 bg-slate-700/40 rounded-xl border border-white/5 overflow-x-auto no-scrollbar">
                 <button
                     onClick={() => setActiveTab('my-points')}
                     className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'my-points'
@@ -75,12 +99,15 @@ function App() {
                 </button>
                 <button
                     onClick={() => setActiveTab('chat')}
-                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'chat'
+                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all relative ${activeTab === 'chat'
                         ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                         }`}
                 >
                     커뮤니티
+                    {hasNewMessage && activeTab !== 'chat' && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-slate-900 animate-pulse" />
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab('water-level')}
