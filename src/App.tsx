@@ -3,11 +3,12 @@ import MyPoints from './components/MyPoints';
 import RegisterPoint from './components/RegisterPoint';
 import WaterLevel from './components/WaterLevel';
 import LandingPage from './components/LandingPage';
+import Chat from './components/Chat';
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { Session } from '@supabase/supabase-js';
 
-type Tab = 'my-points' | 'register' | 'water-level' | 'landing';
+type Tab = 'my-points' | 'register' | 'water-level' | 'landing' | 'chat';
 
 function App() {
     const [activeTab, setActiveTab] = useState<Tab>('landing');
@@ -53,10 +54,10 @@ function App() {
                 </button>
             </div>
 
-            <nav className="flex gap-1.5 p-1 bg-slate-700/40 rounded-xl border border-white/5">
+            <nav className="flex gap-1.5 p-1 bg-slate-700/40 rounded-xl border border-white/5 overflow-x-auto scrollbar-hide">
                 <button
                     onClick={() => setActiveTab('my-points')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'my-points'
+                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'my-points'
                         ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                         }`}
@@ -65,7 +66,7 @@ function App() {
                 </button>
                 <button
                     onClick={() => setActiveTab('register')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'register'
+                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'register'
                         ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                         }`}
@@ -73,8 +74,17 @@ function App() {
                     포인트 등록
                 </button>
                 <button
+                    onClick={() => setActiveTab('chat')}
+                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'chat'
+                        ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                        }`}
+                >
+                    커뮤니티
+                </button>
+                <button
                     onClick={() => setActiveTab('water-level')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'water-level'
+                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'water-level'
                         ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                         }`}
@@ -89,7 +99,7 @@ function App() {
         <div className="w-full h-full flex flex-col overflow-hidden bg-slate-900">
             {header}
             <main className="flex-1 relative overflow-hidden">
-                {(activeTab === 'my-points' || activeTab === 'register') && !session ? (
+                {(activeTab === 'my-points' || activeTab === 'register' || activeTab === 'chat') && !session ? (
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900 animate-fade-in">
                         <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6 border border-white/5 shadow-2xl">
                             <Anchor className="text-sky-500" size={40} />
@@ -118,6 +128,11 @@ function App() {
                                 <RegisterPoint isPremium={isPremium} />
                             </div>
                         )}
+                        {activeTab === 'chat' && (
+                            <div className="h-full">
+                                <Chat />
+                            </div>
+                        )}
                         {activeTab === 'water-level' && (
                             <div className="h-full overflow-y-auto">
                                 <WaterLevel />
@@ -127,7 +142,7 @@ function App() {
                 )}
             </main>
 
-            {activeTab !== 'water-level' && (
+            {activeTab !== 'water-level' && activeTab !== 'chat' && (
                 <footer className="footer-content p-4 text-center text-xs text-slate-600 flex-none">
                     <p>&copy; 2024 BassMap. {isPremium ? 'Premium Features Unlocked' : 'Upgrade for AI Analysis'}</p>
                 </footer>
