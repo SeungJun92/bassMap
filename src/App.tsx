@@ -1,6 +1,7 @@
 import { Anchor, Crown } from 'lucide-react';
 import MyPoints from './components/MyPoints';
 import RegisterPoint from './components/RegisterPoint';
+import RecommendPoint from './components/RecommendPoint';
 import WaterLevel from './components/WaterLevel';
 import LandingPage from './components/LandingPage';
 import Chat from './components/Chat';
@@ -8,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { Session } from '@supabase/supabase-js';
 
-type Tab = 'my-points' | 'register' | 'water-level' | 'landing' | 'chat';
+type Tab = 'my-points' | 'register' | 'recommend' | 'water-level' | 'landing' | 'chat';
 
 function App() {
     const [activeTab, setActiveTab] = useState<Tab>('landing');
@@ -119,6 +120,15 @@ function App() {
                     포인트 등록
                 </button>
                 <button
+                    onClick={() => setActiveTab('recommend')}
+                    className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'recommend'
+                        ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                        }`}
+                >
+                    포인트 추천
+                </button>
+                <button
                     onClick={() => setActiveTab('chat')}
                     className={`flex-1 min-w-[80px] py-2 text-xs font-bold rounded-lg transition-all relative ${activeTab === 'chat'
                         ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20 scale-[1.02]'
@@ -179,6 +189,11 @@ function App() {
                         {activeTab === 'chat' && (
                             <div className="h-full">
                                 <Chat />
+                            </div>
+                        )}
+                        {activeTab === 'recommend' && (
+                            <div className="h-full overflow-y-auto">
+                                <RecommendPoint isPremium={isPremium} />
                             </div>
                         )}
                         {activeTab === 'water-level' && (
