@@ -65,25 +65,28 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
         setSelectedPoint(null);
 
         try {
-            const { data, error } = await supabase.functions.invoke('recommend', {
-                body: { address: searchKeyword }
+            // Supabase SDK 대신 직접 fetch를 사용하여 디버깅
+            const { data: { session } } = await supabase.auth.getSession();
+            const projectUrl = (supabase as any).supabaseUrl;
+            const anonKey = (supabase as any).supabaseKey;
+            
+            const response = await fetch(`${projectUrl}/functions/v1/recommend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token || anonKey}`,
+                    'apikey': anonKey
+                },
+                body: JSON.stringify({ address: searchKeyword })
             });
 
-            if (error) {
-                console.error('Full Supabase Error:', error);
-                let errorMsg = error.message || '알 수 없는 에러';
-                
-                // 에러 상세 정보가 있다면 포함
-                if (error.context && typeof error.context === 'object') {
-                    try {
-                        const contextStr = JSON.stringify(error.context);
-                        errorMsg += ' (Context: ' + contextStr + ')';
-                    } catch (e) {}
-                }
-                throw new Error(errorMsg);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `서버 오류 (${response.status})`);
             }
 
-            const results = data.recommendations || [];
+            const results = result.recommendations || [];
             setRecommendations(results);
 
             if (results.length > 0) {
@@ -107,6 +110,7 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
 
     return (
         <div className="p-4 animate-fade-in pb-24 text-slate-200">
+            {/* UI 부분은 동일하므로 생략하지 않고 그대로 유지 */}
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent flex items-center gap-2">
                     <Sparkles size={22} className="text-amber-400" />
