@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sparkles, Search, Loader2, MapPin, Navigation, Info, ExternalLink } from 'lucide-react';
 import KakaoMap from './KakaoMap';
 
