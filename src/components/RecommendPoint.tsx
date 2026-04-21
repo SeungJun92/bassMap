@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Search, Loader2, MapPin, Navigation, Info, ExternalLink } from 'lucide-react';
 import KakaoMap from './KakaoMap';
+import { supabase } from '../supabase';
 
 interface RecommendedPoint {
     id: number;
@@ -53,7 +54,7 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
         );
     };
 
-    const handleAIAnalyze = () => {
+    const handleAIAnalyze = async () => {
         if (!searchKeyword.trim()) {
             alert('추천받고 싶은 지역이나 주소를 입력해주세요.');
             return;
@@ -63,39 +64,28 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
         setRecommendations([]);
         setSelectedPoint(null);
 
-        // Simulated AI analysis delay
-        setTimeout(() => {
-            // Mock data based on some keywords or just randomish near the search
-            const mockResults: RecommendedPoint[] = [
-                {
-                    id: 1,
-                    name: `${searchKeyword.split(' ')[0] || '지역'} 인근 저수지`,
-                    address: searchKeyword + ' 인근 A 포인트',
-                    lat: mapPos.lat + 0.01,
-                    lng: mapPos.lng + 0.01,
-                    reason: '수위가 안정적이며 최근 덩어리 배스 조과가 다수 보고된 포인트입니다. 새물 유입구 근처를 공략해보세요.',
-                    score: 95,
-                    tags: ['덩어리', '새물유입구', '발판좋음']
-                },
-                {
-                    id: 2,
-                    name: `${searchKeyword.split(' ')[0] || '지역'} 수로 포인트`,
-                    address: searchKeyword + ' 인근 B 포인트',
-                    lat: mapPos.lat - 0.01,
-                    lng: mapPos.lng - 0.005,
-                    reason: '바닥 지형이 험하지만 빅베이트에 반응이 좋은 곳입니다. 수몰 나무 주변 피칭 위주로 탐색하는 것을 추천합니다.',
-                    score: 88,
-                    tags: ['수몰나무', '커버낚시', '빅베이트']
-                }
-            ];
+        try {
+            const { data, error } = await supabase.functions.invoke('recommend', {
+                body: { address: searchKeyword }
+            });
 
-            setRecommendations(mockResults);
-            setIsAnalyzing(false);
-            if (mockResults.length > 0) {
-                setMapPos({ lat: mockResults[0].lat, lng: mockResults[0].lng });
-                setSelectedPoint(mockResults[0]);
+            if (error) throw error;
+
+            const results = data.recommendations || [];
+            setRecommendations(results);
+
+            if (results.length > 0) {
+                setMapPos({ lat: results[0].lat, lng: results[0].lng });
+                setSelectedPoint(results[0]);
+            } else {
+                alert('추천 결과를 가져오지 못했습니다. 다시 시도해주세요.');
             }
-        }, 2000);
+        } catch (err: any) {
+            console.error('AI Recommend Error:', err);
+            alert(`AI 추천 중 오류가 발생했습니다: ${err.message}`);
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const handlePointClick = (point: RecommendedPoint) => {
