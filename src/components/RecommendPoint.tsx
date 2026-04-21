@@ -70,14 +70,15 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
             });
 
             if (error) {
-                // Try to get detailed error message from context or message
-                let errorMsg = 'AI 추천 중 오류가 발생했습니다.';
+                console.error('Full Supabase Error:', error);
+                let errorMsg = error.message || '알 수 없는 에러';
+                
+                // 에러 상세 정보가 있다면 포함
                 if (error.context && typeof error.context === 'object') {
-                    // Supabase functions errors often have the body in the context
-                    const context = error.context as any;
-                    if (context.message) errorMsg = context.message;
-                } else if (error.message) {
-                    errorMsg = error.message;
+                    try {
+                        const contextStr = JSON.stringify(error.context);
+                        errorMsg += ' (Context: ' + contextStr + ')';
+                    } catch (e) {}
                 }
                 throw new Error(errorMsg);
             }
@@ -93,7 +94,6 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
             }
         } catch (err: any) {
             console.error('AI Recommend Error:', err);
-            // Show more detailed error to the user
             alert(`AI 추천 실패: ${err.message}`);
         } finally {
             setIsAnalyzing(false);
