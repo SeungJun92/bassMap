@@ -69,7 +69,18 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
                 body: { address: searchKeyword }
             });
 
-            if (error) throw error;
+            if (error) {
+                // Try to get detailed error message from context or message
+                let errorMsg = 'AI 추천 중 오류가 발생했습니다.';
+                if (error.context && typeof error.context === 'object') {
+                    // Supabase functions errors often have the body in the context
+                    const context = error.context as any;
+                    if (context.message) errorMsg = context.message;
+                } else if (error.message) {
+                    errorMsg = error.message;
+                }
+                throw new Error(errorMsg);
+            }
 
             const results = data.recommendations || [];
             setRecommendations(results);
@@ -82,7 +93,8 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
             }
         } catch (err: any) {
             console.error('AI Recommend Error:', err);
-            alert(`AI 추천 중 오류가 발생했습니다: ${err.message}`);
+            // Show more detailed error to the user
+            alert(`AI 추천 실패: ${err.message}`);
         } finally {
             setIsAnalyzing(false);
         }
