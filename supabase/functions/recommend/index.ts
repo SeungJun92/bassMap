@@ -27,18 +27,23 @@ Deno.serve(async (req) => {
     
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
 
-    const prompt = `당신은 실시간 지리 데이터와 낚시 정보를 분석하는 전문가입니다. 
-다음 위치 인근의 포인트를 '실시간 검색'을 통해 추천해주세요: "${address}"
+    const prompt = `당신은 낚시꾼에게 정확한 길을 안내하는 '고정밀 내비게이션 분석가'입니다. 
+다음 위치 인근의 포인트를 실시간 검색하여 추천해주세요: "${address}"
 
-[필수 준수 사항 - 위반 시 무효]
-1. **추천 개수:** 반드시 가장 조과가 좋고 확실한 포인트 **딱 2곳**만 선정하세요.
-2. **지리적 정확도:** 추천하는 장소는 반드시 '실제 물가(Shoreline)'에 접해 있어야 합니다. 산 속이나 물에서 떨어진 도로는 절대 안 됩니다.
-3. **검증:** Google 검색을 통해 해당 장소가 현재 낚시가 가능한지, 최근 조과 정보가 있는지 확인하세요.
-4. **거리:** 입력된 주소 반경 10km 이내여야 하며, 이를 벗어나면 "${AI_CONFIG.noResultMsg}"라고만 답하세요.
+[치명적 오류 경고 - 반드시 준수]
+- **주소와 좌표의 불일치는 절대 금지입니다.** 제공하는 '위도/경도'는 반드시 '제공하는 주소' 내에 위치해야 합니다. (예: 주소는 북하면인데 좌표가 다른 면에 찍히는 경우 등)
+- 모든 좌표는 반드시 **실제 물가(연안)**여야 합니다.
+
+[작업 단계]
+1. 입력된 주소 반경 10km 이내의 실제 배스 낚시 명소 2곳을 검색합니다.
+2. 각 명소의 **정확한 지번/도로명 주소**를 확인합니다.
+3. 해당 주소의 **실제 수변 좌표(위도, 경도)**를 구글 지도 데이터 기반으로 추출합니다.
+4. 주소와 좌표가 서로 일치하는지 최종 검토한 후, 확실한 데이터만 JSON으로 출력합니다.
+5. 불확실하면 차라리 "${AI_CONFIG.noResultMsg}"라고 답변하세요.
 
 [응답 형식]
 JSON 형식으로만 응답:
-[ { "id": 1, "name": "포인트 명칭", "address": "실제 수변 상세 주소", "lat": 위도, "lng": 경도, "reason": "실제 조과 및 지형 근거", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
+[ { "id": 1, "name": "포인트 명칭", "address": "좌표와 100% 일치하는 상세 주소", "lat": 위도, "lng": 경도, "reason": "추천 근거", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
     // 대시보드 기반 모델 리스트 (가장 확실한 명칭으로 재설정)
     const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
@@ -46,7 +51,7 @@ JSON 형식으로만 응답:
     let errors: string[] = [];
     for (const model of preferredModels) {
       try {
-        console.log(`[TRY] Attempting high-precision model: ${model}`);
+        console.log(`[TRY] High-Precision Mapping Attempt: ${model}`);
         
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
@@ -61,6 +66,7 @@ JSON 형식으로만 응답:
             }
           }),
         });
+
 
 
         const data = await response.json();
