@@ -30,38 +30,38 @@ Deno.serve(async (req) => {
     const prompt = `당신은 실시간 지리 데이터와 낚시 정보를 분석하는 전문가입니다. 
 다음 위치 인근의 포인트를 '실시간 검색'을 통해 추천해주세요: "${address}"
 
-[검색 및 분석 지침]
-1. 반드시 Google 검색을 사용하여 해당 지역의 최신 배스 낚시 조과와 포인트 정보를 확인하세요.
-2. 추천하려는 장소의 '정확한 주소'와 '수변(연안) 좌표'를 구글 지도와 대조하여 검증하세요.
-3. 규칙: ${AI_CONFIG.rules.join(', ')}
-4. 검색 결과가 불확실하거나, 해당 지역에 10km 이내의 적절한 포인트가 없다면 절대 거짓말하지 말고 "${AI_CONFIG.noResultMsg}"라고만 응답하세요.
+[필수 준수 사항 - 위반 시 무효]
+1. **추천 개수:** 반드시 가장 조과가 좋고 확실한 포인트 **딱 2곳**만 선정하세요.
+2. **지리적 정확도:** 추천하는 장소는 반드시 '실제 물가(Shoreline)'에 접해 있어야 합니다. 산 속이나 물에서 떨어진 도로는 절대 안 됩니다.
+3. **검증:** Google 검색을 통해 해당 장소가 현재 낚시가 가능한지, 최근 조과 정보가 있는지 확인하세요.
+4. **거리:** 입력된 주소 반경 10km 이내여야 하며, 이를 벗어나면 "${AI_CONFIG.noResultMsg}"라고만 답하세요.
 
 [응답 형식]
 JSON 형식으로만 응답:
-[ { "id": 1, "name": "포인트 명칭", "address": "실제 검색된 상세 주소", "lat": 위도, "lng": 경도, "reason": "실제 조과 및 지형 근거", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
+[ { "id": 1, "name": "포인트 명칭", "address": "실제 수변 상세 주소", "lat": 위도, "lng": 경도, "reason": "실제 조과 및 지형 근거", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
     // 대시보드 기반 모델 리스트 (가장 확실한 명칭으로 재설정)
-    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
     
     let errors: string[] = [];
     for (const model of preferredModels) {
       try {
-        console.log(`[TRY] Attempting model with Google Search: ${model}`);
+        console.log(`[TRY] Attempting high-precision model: ${model}`);
         
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
-            // 에러 메시지의 권고에 따라 도구 명칭을 google_search로 변경
             tools: [{ google_search: {} }],
             generationConfig: { 
               temperature: 0,
-              topP: 0.95,
-              topK: 40
+              topP: 1,
+              topK: 1
             }
           }),
         });
+
 
         const data = await response.json();
         if (response.ok) {
