@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Search, Loader2, MapPin, Navigation, Info, ExternalLink, Car } from 'lucide-react';
+import { Sparkles, Search, Loader2, MapPin, Navigation, Info, ExternalLink } from 'lucide-react';
 import KakaoMap from './KakaoMap';
 import { supabase } from '../supabase';
 import { AI_RECOMMEND_CONFIG } from '../config/aiConfig';
