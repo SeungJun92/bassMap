@@ -1,4 +1,4 @@
-// Supabase Edge Function: recommend (High Precision Version)
+// Supabase Edge Function: recommend (Optimized for Flash & High Precision)
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -11,11 +11,10 @@ const AI_CONFIG = {
   noResultMsg: "근처에는 마땅한 추천 장소가 없습니다.",
   rules: [
     "입력된 주소 반경 10km 이내의 포인트만 추천할 것",
-    "반드시 배스 낚시가 가능한 곳이어야 하며, 낚시 금지구역은 절대 제외할 것",
-    "구글 지도 및 최신 지리 정보를 바탕으로 '실제 물가(연안)'에 해당하는 주소를 제공할 것",
-    "산 중턱이나 도로 한복판 같은 엉뚱한 좌표를 생성하지 말 것 (위도/경도 정확도 최우선)",
-    "저수지, 강, 수로, 노지 포인트를 모두 고려하되, 실제 조과가 있는 유명 포인트를 우선할 것",
-    "추천 포인트는 반드시 2곳 이하로 할 것"
+    "낚시 금지구역(상수원 보호구역 등)은 절대 제외할 것",
+    "주소는 반드시 '전라남도 장성군...'과 같이 상세 지번이나 도로명까지 포함할 것",
+    "위도/경도 좌표는 반드시 해당 주소의 실제 '물가'여야 함 (산, 들판, 도로 절대 금지)",
+    "조과가 증명된 유명 포인트 또는 유효한 노지/수로 포인트 위주로 선정할 것"
   ]
 }
 
@@ -28,23 +27,21 @@ Deno.serve(async (req) => {
     
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
 
-    // Pro 모델을 사용하여 추론 능력 극대화
-    const prompt = `당신은 대한민국 최고의 배스 낚시 전문가이자 지리 정보 분석가입니다. 
+    const prompt = `당신은 대한민국 최고의 배스 낚시 전문가이자, 오차 없는 지리 데이터 분석가입니다. 
 다음 위치 인근의 포인트를 추천해주세요: "${address}"
 
-[지시 사항]
-1. 내부 지식과 검색 알고리즘을 총동원하여 실제 낚시꾼들이 방문하는 정확한 포인트를 찾아내세요.
-2. 각 포인트의 주소는 도로명 또는 지번 주소로 매우 정확해야 합니다.
-3. 위도(lat)와 경도(lng)는 반드시 해당 주소의 실제 '물가(수변)' 지점이어야 합니다. 산이나 건물 위가 되어서는 안 됩니다.
-4. 규칙: ${AI_CONFIG.rules.join(', ')}
-5. 만약 위 조건을 만족하는 신뢰할 수 있는 데이터를 찾기 어렵다면, 거짓 정보를 생성하지 말고 반드시 "${AI_CONFIG.noResultMsg}"라고만 응답하세요.
+[절대 규칙 - 위반 시 무효]
+1. 모든 추천 포인트는 실제 존재하는 장소여야 하며, 주소와 좌표가 1m의 오차도 없이 일치해야 합니다.
+2. 당신의 답변은 낚시꾼의 안전과 법적 준수(낚시 금지구역)에 직결됩니다. 불확실한 정보는 절대 제공하지 마세요.
+3. 반드시 반경 ${AI_CONFIG.radiusKm}km 이내의 포인트여야 합니다.
+4. 만약 데이터가 부족하거나 좌표가 불확실하다면 억지로 추천하지 말고 반드시 "${AI_CONFIG.noResultMsg}"라고만 답변하세요.
 
 [응답 형식]
-JSON 형식으로만 응답:
-[ { "id": 1, "name": "포인트 명칭", "address": "정확한 주소", "lat": 위도, "lng": 경도, "reason": "구체적인 추천 이유", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
+아래 JSON 형식으로만 응답하세요:
+[ { "id": 1, "name": "포인트 명칭", "address": "상세 주소", "lat": 위도(실제 수변), "lng": 경도(실제 수변), "reason": "추천 이유", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
-    // Pro 모델을 최우선으로 사용 (추론 능력 및 정확도 향상)
-    const preferredModels = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash"];
+    // Flash 모델을 최우선으로 사용하여 사용량 확보 (1.5 Flash가 가장 안정적임)
+    const preferredModels = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-2.0-flash"];
     
     let lastError = "";
     for (const model of preferredModels) {
@@ -54,7 +51,11 @@ JSON 형식으로만 응답:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.1 } // 낮은 온도로 설정하여 정확도(결정론적 응답) 향상
+            generationConfig: { 
+              temperature: 0.1, // 창의성 배제, 사실성 위주
+              topP: 0.8,
+              topK: 10
+            }
           }),
         });
 
@@ -88,7 +89,7 @@ JSON 형식으로만 응답:
       }
     }
 
-    throw new Error(`AI 분석 결과 생성 실패: ${lastError}`);
+    throw new Error(`분석 실패: 할당량 초과 또는 서버 오류 (${lastError})`);
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), { 
@@ -97,5 +98,6 @@ JSON 형식으로만 응답:
     })
   }
 })
+
 
 
