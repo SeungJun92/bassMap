@@ -40,13 +40,15 @@ Deno.serve(async (req) => {
 아래 JSON 형식으로만 응답하세요:
 [ { "id": 1, "name": "포인트 명칭", "address": "상세 주소", "lat": 위도(실제 수변), "lng": 경도(실제 수변), "reason": "추천 이유", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
-    // 대시보드 기반 모델 리스트 (2026년 기준 변형 포함)
-    const preferredModels = ["gemini-3-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+    // 대시보드에서 확인된 500회 할당량 모델을 최우선으로 설정
+    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash"];
     
     let errors: string[] = [];
     for (const model of preferredModels) {
       try {
         console.log(`[TRY] Attempting model: ${model}`);
+        
+        // v1beta와 v1 두 가지 엔드포인트를 모두 고려하여 시도
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -94,7 +96,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    throw new Error(`모든 모델 호출 실패: \n${errors.join('\n')}`);
+    throw new Error(`모든 모델 호출 실패 (할당량 500회인 3.1 Flash Lite 우선 시도됨): \n${errors.join('\n')}`);
+
 
 
   } catch (error) {
