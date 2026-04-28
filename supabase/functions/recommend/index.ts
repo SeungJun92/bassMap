@@ -40,24 +40,23 @@ Deno.serve(async (req) => {
 JSON 형식으로만 응답:
 [ { "id": 1, "name": "포인트 명칭", "address": "실제 검색된 상세 주소", "lat": 위도, "lng": 경도, "reason": "실제 조과 및 지형 근거", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
-    // 대시보드에서 확인된 500회 할당량 모델을 최우선으로 설정
-    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
+    // 대시보드 기반 모델 리스트 (가장 확실한 명칭으로 재설정)
+    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
     
     let errors: string[] = [];
     for (const model of preferredModels) {
       try {
         console.log(`[TRY] Attempting model with Google Search: ${model}`);
         
-        // v1beta와 v1 두 가지 엔드포인트를 모두 고려하여 시도
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
-            // 실시간 검색 기능(Grounding) 활성화
-            tools: [{ google_search_retrieval: {} }],
+            // 에러 메시지의 권고에 따라 도구 명칭을 google_search로 변경
+            tools: [{ google_search: {} }],
             generationConfig: { 
-              temperature: 0, // 가장 정확하고 일관된 결과
+              temperature: 0,
               topP: 0.95,
               topK: 40
             }
