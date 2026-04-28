@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
 아래 JSON 형식으로만 응답하세요:
 [ { "id": 1, "name": "포인트 명칭", "address": "상세 주소", "lat": 위도(실제 수변), "lng": 경도(실제 수변), "reason": "추천 이유", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
-    // Flash 모델을 최우선으로 사용하여 사용량 확보 (1.5 Flash가 가장 안정적임)
-    const preferredModels = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-2.0-flash"];
+    // 대시보드 확인 결과 사용 가능한 최신 모델로 변경
+    const preferredModels = ["gemini-3-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
     
     let lastError = "";
     for (const model of preferredModels) {
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { 
-              temperature: 0.1, // 창의성 배제, 사실성 위주
+              temperature: 0.1,
               topP: 0.8,
               topK: 10
             }
