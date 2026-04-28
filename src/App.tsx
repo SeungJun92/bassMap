@@ -157,7 +157,7 @@ function App() {
         <div className="w-full h-full flex flex-col overflow-hidden bg-slate-900">
             {header}
             <main className="flex-1 relative overflow-hidden">
-                {(activeTab === 'my-points' || activeTab === 'register' || activeTab === 'chat') && !session ? (
+                {(activeTab === 'my-points' || activeTab === 'register' || activeTab === 'chat' || activeTab === 'recommend') && !session ? (
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900 animate-fade-in">
                         <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6 border border-white/5 shadow-2xl">
                             <Anchor className="text-sky-500" size={40} />

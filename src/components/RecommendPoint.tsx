@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, Search, Loader2, MapPin, Navigation, Info, ExternalLink } from 'lucide-react';
+import { Sparkles, Search, Loader2, MapPin, Navigation, Info, ExternalLink, Car } from 'lucide-react';
 import KakaoMap from './KakaoMap';
 import { supabase } from '../supabase';
+import { AI_RECOMMEND_CONFIG } from '../config/aiConfig';
 
 interface RecommendedPoint {
     id: number;
@@ -21,6 +22,30 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
     const [mapPos, setMapPos] = useState({ lat: 37.5665, lng: 126.9780 });
     const [selectedPoint, setSelectedPoint] = useState<RecommendedPoint | null>(null);
     const [isLocating, setIsLocating] = useState(false);
+    const [navPoint, setNavPoint] = useState<RecommendedPoint | null>(null);
+    const [noResultMsg, setNoResultMsg] = useState('');
+
+    const handleNavigation = (type: 'tmap' | 'kakao' | 'naver') => {
+        if (!navPoint) return;
+
+        const { lat, lng, name } = navPoint;
+        let url = '';
+
+        switch (type) {
+            case 'tmap':
+                url = `tmap://route?goalname=${encodeURIComponent(name)}&goalx=${lng}&goaly=${lat}`;
+                break;
+            case 'kakao':
+                url = `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
+                break;
+            case 'naver':
+                url = `nmap://route/car?dlat=${lat}&dlng=${lng}&dname=${encodeURIComponent(name)}&appname=bassmap`;
+                break;
+        }
+
+        window.open(url, '_blank');
+        setNavPoint(null);
+    };
 
     const handleCurrentLocation = () => {
         if (!("geolocation" in navigator)) {
@@ -63,9 +88,9 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
         setIsAnalyzing(true);
         setRecommendations([]);
         setSelectedPoint(null);
+        setNoResultMsg('');
 
         try {
-            // Supabase SDK 대신 직접 fetch를 사용하여 디버깅
             const { data: { session } } = await supabase.auth.getSession();
             const projectUrl = (supabase as any).supabaseUrl;
             const anonKey = (supabase as any).supabaseKey;
@@ -87,13 +112,13 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
             }
 
             const results = result.recommendations || [];
-            setRecommendations(results);
-
+            
             if (results.length > 0) {
+                setRecommendations(results);
                 setMapPos({ lat: results[0].lat, lng: results[0].lng });
                 setSelectedPoint(results[0]);
             } else {
-                alert('추천 결과를 가져오지 못했습니다. 다시 시도해주세요.');
+                setNoResultMsg(result.message || AI_RECOMMEND_CONFIG.noResultMsg);
             }
         } catch (err: any) {
             console.error('AI Recommend Error:', err);
@@ -172,6 +197,14 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
                 )}
             </button>
 
+            {noResultMsg && (
+                <div className="glass-panel p-8 text-center bg-slate-800/40 border-dashed border-2 border-slate-700 rounded-3xl animate-fade-in mb-8">
+                    <Info className="text-slate-500 mx-auto mb-3" size={32} />
+                    <p className="text-slate-300 font-bold mb-1">{noResultMsg}</p>
+                    <p className="text-slate-500 text-xs">다른 지역이나 주소를 입력해보세요.</p>
+                </div>
+            )}
+
             {!isPremium && (
                 <div className="glass-panel p-4 mb-8 bg-amber-500/5 border-amber-500/20 rounded-2xl flex items-start gap-3">
                     <Info className="text-amber-500 shrink-0" size={20} />
@@ -218,9 +251,18 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
                                             <MapPin size={10} /> {point.address}
                                         </p>
                                     </div>
-                                    <button className="p-2 rounded-full bg-slate-700/50 text-slate-400 hover:text-white transition-colors">
-                                        <ExternalLink size={16} />
-                                    </button>
+                                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                        <button 
+                                            onClick={() => setNavPoint(point)}
+                                            className="p-2 rounded-xl bg-sky-500/10 text-sky-400 hover:bg-sky-500 hover:text-white transition-all border border-sky-500/20 flex items-center gap-1.5 px-3"
+                                        >
+                                            <Navigation size={14} fill="currentColor" />
+                                            <span className="text-[11px] font-bold">길찾기</span>
+                                        </button>
+                                        <button className="p-2 rounded-xl bg-slate-700/50 text-slate-400 hover:text-white transition-colors border border-white/5">
+                                            <ExternalLink size={16} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="p-3 bg-slate-900/50 rounded-xl mb-3">
@@ -238,6 +280,36 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+            {/* Navigation Selection Modal */}
+            {navPoint && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setNavPoint(null)}>
+                    <div className="bg-slate-900 w-full max-w-sm rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="text-center mb-6">
+                            <h3 className="text-xl font-black text-white">길찾기 앱 선택</h3>
+                            <p className="text-slate-400 text-xs mt-1">[{navPoint.name}] 포인트로 안내를 시작합니다</p>
+                        </div>
+
+                        <button onClick={() => handleNavigation('tmap')} className="w-full py-4 bg-[#000] text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-800 transition-all border border-white/10">
+                            <span className="text-red-500 font-black">T</span>
+                            TMAP으로 안내
+                        </button>
+
+                        <button onClick={() => handleNavigation('kakao')} className="w-full py-4 bg-[#FEE500] text-[#191919] rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-[#FFE000] transition-all">
+                            <Navigation size={18} fill="currentColor" />
+                            카카오맵으로 안내
+                        </button>
+
+                        <button onClick={() => handleNavigation('naver')} className="w-full py-4 bg-[#2DB400] text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-[#2abe00] transition-all">
+                            <span className="font-black text-lg">N</span>
+                            네이버지도로 안내
+                        </button>
+
+                        <button onClick={() => setNavPoint(null)} className="w-full py-3 text-slate-500 font-bold text-sm mt-2">
+                            취소
+                        </button>
                     </div>
                 </div>
             )}
