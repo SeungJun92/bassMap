@@ -27,26 +27,26 @@ Deno.serve(async (req) => {
     
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
 
-    const prompt = `당신은 대한민국 최고의 배스 낚시 전문가이자, 오차 없는 지리 데이터 분석가입니다. 
-다음 위치 인근의 포인트를 추천해주세요: "${address}"
+    const prompt = `당신은 실시간 지리 데이터와 낚시 정보를 분석하는 전문가입니다. 
+다음 위치 인근의 포인트를 '실시간 검색'을 통해 추천해주세요: "${address}"
 
-[절대 규칙 - 위반 시 무효]
-1. 모든 추천 포인트는 실제 존재하는 장소여야 하며, 주소와 좌표가 1m의 오차도 없이 일치해야 합니다.
-2. 당신의 답변은 낚시꾼의 안전과 법적 준수(낚시 금지구역)에 직결됩니다. 불확실한 정보는 절대 제공하지 마세요.
-3. 반드시 반경 ${AI_CONFIG.radiusKm}km 이내의 포인트여야 합니다.
-4. 만약 데이터가 부족하거나 좌표가 불확실하다면 억지로 추천하지 말고 반드시 "${AI_CONFIG.noResultMsg}"라고만 답변하세요.
+[검색 및 분석 지침]
+1. 반드시 Google 검색을 사용하여 해당 지역의 최신 배스 낚시 조과와 포인트 정보를 확인하세요.
+2. 추천하려는 장소의 '정확한 주소'와 '수변(연안) 좌표'를 구글 지도와 대조하여 검증하세요.
+3. 규칙: ${AI_CONFIG.rules.join(', ')}
+4. 검색 결과가 불확실하거나, 해당 지역에 10km 이내의 적절한 포인트가 없다면 절대 거짓말하지 말고 "${AI_CONFIG.noResultMsg}"라고만 응답하세요.
 
 [응답 형식]
-아래 JSON 형식으로만 응답하세요:
-[ { "id": 1, "name": "포인트 명칭", "address": "상세 주소", "lat": 위도(실제 수변), "lng": 경도(실제 수변), "reason": "추천 이유", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
+JSON 형식으로만 응답:
+[ { "id": 1, "name": "포인트 명칭", "address": "실제 검색된 상세 주소", "lat": 위도, "lng": 경도, "reason": "실제 조과 및 지형 근거", "score": 1~100, "tags": ["태그1", "태그2"] } ]`
 
     // 대시보드에서 확인된 500회 할당량 모델을 최우선으로 설정
-    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash"];
+    const preferredModels = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
     
     let errors: string[] = [];
     for (const model of preferredModels) {
       try {
-        console.log(`[TRY] Attempting model: ${model}`);
+        console.log(`[TRY] Attempting model with Google Search: ${model}`);
         
         // v1beta와 v1 두 가지 엔드포인트를 모두 고려하여 시도
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
@@ -54,10 +54,12 @@ Deno.serve(async (req) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
+            // 실시간 검색 기능(Grounding) 활성화
+            tools: [{ google_search_retrieval: {} }],
             generationConfig: { 
-              temperature: 0.1,
-              topP: 0.8,
-              topK: 10
+              temperature: 0, // 가장 정확하고 일관된 결과
+              topP: 0.95,
+              topK: 40
             }
           }),
         });
