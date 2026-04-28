@@ -114,9 +114,34 @@ export default function RecommendPoint({ isPremium }: { isPremium: boolean }) {
             const results = result.recommendations || [];
             
             if (results.length > 0) {
-                setRecommendations(results);
-                setMapPos({ lat: results[0].lat, lng: results[0].lng });
-                setSelectedPoint(results[0]);
+                // [좌표 정밀 교정 로직 추가]
+                // AI가 준 좌표를 그대로 믿지 않고, AI가 준 '주소'를 카카오 지도로 다시 검색하여 실제 좌표를 가져옵니다.
+                const correctedResults = await Promise.all(results.map(async (point: RecommendedPoint) => {
+                    return new Promise<RecommendedPoint>((resolve) => {
+                        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                            const geocoder = new window.kakao.maps.services.Geocoder();
+                            geocoder.addressSearch(point.address, (geoResult: any, status: any) => {
+                                if (status === window.kakao.maps.services.Status.OK && geoResult[0]) {
+                                    // 카카오 지도가 찾은 정확한 좌표로 갱신
+                                    resolve({
+                                        ...point,
+                                        lat: parseFloat(geoResult[0].y),
+                                        lng: parseFloat(geoResult[0].x)
+                                    });
+                                } else {
+                                    // 주소 검색 실패 시 AI 좌표 유지
+                                    resolve(point);
+                                }
+                            });
+                        } else {
+                            resolve(point);
+                        }
+                    });
+                }));
+
+                setRecommendations(correctedResults);
+                setMapPos({ lat: correctedResults[0].lat, lng: correctedResults[0].lng });
+                setSelectedPoint(correctedResults[0]);
             } else {
                 setNoResultMsg(result.message || AI_RECOMMEND_CONFIG.noResultMsg);
             }
